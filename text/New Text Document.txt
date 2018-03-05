@@ -1,0 +1,53 @@
+2018-02-12
+2018-02-12
+
+proposal
+project
+abstract
+report
+
+keep track of everything you read for the literature review
+
+write the progress reports so that they can be plugged into the report
+
+do you have a real life organization who will be using your project?
+are you learnning something brand new to integrate into your project?
+
+paper with blessing of supervisor
+
+weekly goal: write the proposal, get written confirmation, try to get requested features
+
+-------------------------
+
+2018-02-19
+
+weekly goal was not met, did get confirmation, didn't finish proposal or get requested features
+
+new goal: finish proposal
+
+wrote animation test for idea i had in mind
+
+https://shareurcodes.com/blog/creating%20a%20simple%20rest%20api%20in%20php
+
+--------------------------
+
+2018-02-26
+
+proposal due march 16
+exit exam review april 20
+exit exam may 4
+abstract due may 11
+presentations may 29, 1-5pm ; may 30 12-3pm
+
+weekly goal was pretty much met, need actual requested features
+
+new goal: revise proposal, talk with supervisor, look up hardware
+
+https://hackaday.com/2016/10/04/how-to-get-started-with-the-esp32/
+http://www.instructables.com/id/Arduino-RFID-Reader-MFRC522-Turorial/
+https://www.ebay.com/itm/MFRC-522-RC522-RFID-Radiofrequency-IC-Card-Inducing-Sensor-Reader-for-Arduino-N5/401088843251?epid=1684264440&hash=item5d62c20df3:g:dgUAAOSwstxU102i
+https://www.ebay.com/itm/ESP32-WIFI-Bluetooth-IoT-Board-CP2102-module-Free-Shipping/152909980275?epid=1380678294&hash=item239a252273:g:mVYAAOSwy1NaXtCt
+https://www.ebay.com/itm/2-pack-27mm-Piezoelectric-Disk-Element-Piezo-Sound-Sensor-Pickups-with-2-Wires/192251623333?epid=10005648702&hash=item2cc316f7a5:g:n4oAAOSwn~ZZbh-t:sc:USPSFirstClass!91702!US!-1
+http://www.esp32learning.com/code/esp32-and-rfid-rc522-module-example.php
+https://www.ebay.com/itm/10pcs-Mini360-3A-DC-Voltage-Step-Down-Power-Converter-Buck-Module-3-3V-5V-9V-12V/132416658988?epid=1402279667&hash=item1ed4a5de2c:g:UrsAAOSwr21anAgO
+https://www.ebay.com/itm/10-x-3mm-Diffused-Round-Top-Warm-White-Red-Yellow-Blue-LED-Diodes/253448646061?hash=item3b02b76dad:g:77QAAOSwwvBZoaIo

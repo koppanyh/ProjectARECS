@@ -1,0 +1,73 @@
+<!DOCTYPE HTML>
+<html>
+	<head>
+		<title>Animation Test</title>
+		<meta charset="utf-8">
+		<style>
+			html, body{
+				height: 100%;
+				margin: 0;
+			}
+			#clockbut{
+				border: 1px solid black;
+				border-radius: 100%;
+				width: 100px;
+				height: 100px;
+				text-align: center;
+				background-color: #8f5;
+				position: relative;
+				left: 50%;
+				margin-left: -50px;
+				top: 50%;
+				margin-top: -50px;
+				
+			}
+			#cltext{
+				font-family: sans-serif;
+				font-weight: bold;
+				margin-top: 40px;
+				display: block;
+			}
+			#modal{
+				position: absolute;
+				top: 0%;
+				left: 0%;
+				height: 100%;
+				width: 100%;
+				background-color: #fff;
+				opacity: 1;
+			}
+		</style>
+	</head>
+	<body style="background-color: #f55">
+		<br>
+		<p>Content in the background</p>
+		<p>super advanced settings</p>
+		<p>other stuff</p>
+		<button onclick="raisemodal()">Simple Interface</button>
+		<div id="modal">
+			<div id="clockbut"><span id="cltext">Clock In<span></div>
+			<button onclick="dropmodal()">Advanced Settings</button>
+		</div>
+	</body>
+</html>
+<script>
+	console.log("hello world");
+	//var to = setTimeout(function(){ document.location.reload(); }, 1000);
+	var modal = document.getElementById("modal");
+	modal.style.opacity = 1;
+	function dropmodal(){
+		modal.style.opacity -= 0.02;
+		if(modal.style.opacity > 0.1) setTimeout(dropmodal, 10);
+		else{
+			modal.style.opacity = 0;
+			modal.style.left = "-10000px";
+		}
+	}
+	function raisemodal(){
+		modal.style.opacity = parseFloat(modal.style.opacity) + 0.02;
+		modal.style.left = "";
+		if(modal.style.opacity < 0.9) setTimeout(raisemodal, 10);
+		else modal.style.opacity = 1;
+	}
+</script>

@@ -1,0 +1,9 @@
+toggle thing should keep track of over/under time and give options like "cash out" or "leave early" and stuff
+
+users can't edit records older than 7 days
+
+rfid nodes should have button to become hotspot for on-the-spot configuration
+
+show a super simple interface with an advanced button somewhere, clicking that advanced button will use an animation to drop down the current page and reveal the advanced page underneath
+
+node has to keep records until verified that the server received them
