@@ -61,3 +61,14 @@ weekly goal was met, talk with supervisor isn't going to happen
 new goal: buy parts, start making software
 
 ask if it's too early to buy the parts: answer no, go ahead
+
+https://medium.com/get-outside/migrating-from-php-to-node-js-522768ac482a
+https://hackernoon.com/setting-up-node-js-with-a-database-part-1-3f2461bdd77f
+https://medium.freecodecamp.org/securing-node-js-restful-apis-with-json-web-tokens-9f811a92bb52
+
+https://stormpath.com/blog/everything-you-ever-wanted-to-know-about-node-dot-js-sessions
+https://stormpath.com/blog/where-to-store-your-jwts-cookies-vs-html5-web-storage
+https://www.tutorialspoint.com/nodejs/nodejs_express_framework.htm
+
+http://www.sqlitetutorial.net/sqlite-nodejs/
+https://stackoverflow.com/questions/20165605/detecting-ctrlc-in-node-js

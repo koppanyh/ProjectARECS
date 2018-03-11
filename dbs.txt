@@ -1,0 +1,17 @@
+userdb
+uid email salt hashpw fname lname admin wage days
+
+projdb
+pid title description
+
+workdb
+wid uid description pidref tstart tend
+
+rfiddb
+rid uid ts sid
+
+scannerdb
+sid devid name location
+
+daydb
+did uid day timestart timeend
