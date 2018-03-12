@@ -1,0 +1,47 @@
+<!DOCTYPE HTML>
+<html>
+	<head>
+		<title>Clock In</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<style>
+			#profile {
+				width: 50px;
+				height: 50px;
+				border-radius: 100%;
+			}
+			body {
+				margin: 0;
+			}
+			nav {
+				background-color: #DDD;
+				//text-align: right;
+				padding: 10px;
+			}
+		</style>
+	</head>
+	<body>
+		<nav>
+			<img id="logo" src="/images/logo.png">
+			<a href="/account/user.html">My Account</a>
+			<a href="/account/logout">Log Out</a>
+			<img id="profile" src="/userpics/user.png">
+		</nav>
+		Clock In<br>
+		Clock Out<br>
+	</body>
+</html>
+<script>
+	var userdict = {}
+	var http = new XMLHttpRequest();
+	http.open("POST", "/account", true);
+	http.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+	http.onreadystatechange = function(){
+		if(http.readyState == 4 && http.status == 200){
+			userdict = JSON.parse(http.responseText);
+			console.log(userdict);
+			document.getElementById("profile").src = "/userpics/"+userdict.picture;
+		}
+	};
+	http.send("action=getuser");
+</script>

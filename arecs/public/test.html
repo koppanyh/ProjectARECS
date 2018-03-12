@@ -1,0 +1,17 @@
+<script type="text/javascript" src="/ractive.js"></script>
+
+<div id="target"></div>
+
+<script id="template" type="text/ractive">
+	<p>{{asdf}}</p>
+</script>
+
+<script>
+	var ractive = new Ractive({
+		target: '#target',
+		template: '#template',
+		data: {
+			asdf: "hello world"
+		}
+	});
+</script>

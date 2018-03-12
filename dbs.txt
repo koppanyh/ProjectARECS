@@ -14,4 +14,4 @@ scannerdb
 sid devid name location
 
 daydb
-did uid day timestart timeend
+did uid day timestart timeend total

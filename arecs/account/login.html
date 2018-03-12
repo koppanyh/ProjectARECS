@@ -1,0 +1,38 @@
+<!DOCTYPE HTML>
+<html>
+	<head>
+		<title>Login</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<style>
+			input {
+				width: 300px;
+			}
+			#cont {
+				text-align: center;
+			}
+			#err {
+				color: red;
+			}
+		</style>
+	</head>
+	<body>
+		<div id="cont">
+			<img src="/images/logo.png"><br>
+			<span id="err"></span>
+			<form action="/account" method="POST">
+				<input type="text" name="email" placeholder="Email" autofocus><br>
+				<input type="password" name="passw" placeholder="Password"><br>
+				<input type="hidden" name="action" value="login">
+				<input type="submit" value="Login">
+			</form>
+		</div>
+	</body>
+</html>
+<script>
+	var errs = document.getElementById("err");
+	if(document.location.search.includes("err1"))
+		errs.innerHTML = "Email not found";
+	else if(document.location.search.includes("err2"))
+		errs.innerHTML = "Password is incorrect";
+</script>

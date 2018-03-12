@@ -72,3 +72,7 @@ https://www.tutorialspoint.com/nodejs/nodejs_express_framework.htm
 
 http://www.sqlitetutorial.net/sqlite-nodejs/
 https://stackoverflow.com/questions/20165605/detecting-ctrlc-in-node-js
+
+https://ciphertrick.com/2016/01/18/salt-hash-passwords-using-nodejs-crypto/
+https://www.w3schools.com/nodejs/nodejs_mysql.asp
+http://www.technicalkeeda.com/nodejs-tutorials/how-to-prevent-sql-injection-in-nodejs
