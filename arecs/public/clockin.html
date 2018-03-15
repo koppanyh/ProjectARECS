@@ -1,34 +1,81 @@
 <!DOCTYPE HTML>
 <html>
 	<head>
-		<title>Clock In</title>
+		<title>ARECS - Clock In</title>
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<link rel="icon" href="/images/stop-watch.png">
 		<style>
 			#profile {
 				width: 50px;
 				height: 50px;
 				border-radius: 100%;
+				float: right;
 			}
 			body {
 				margin: 0;
 			}
 			nav {
 				background-color: #DDD;
-				//text-align: right;
 				padding: 10px;
+				margin-bottom: 10px;
+			}
+			.clockbut {
+				border: 1px solid black;
+				border-radius: 100%;
+				width: 100px;
+				height: 100px;
+				text-align: center;
+				display: inline-block;
+				//background-color: #8f5;
+				background-color: #AAA;
+				//position: relative;
+				//position: absolute;
+				//left: 50%;
+				//margin-left: -50px;
+				//top: 50%;
+				//margin-top: -50px;
+				
+			}
+			.cltext {
+				font-family: sans-serif;
+				font-weight: bold;
+				margin-top: 40px;
+				display: block;
 			}
 		</style>
 	</head>
 	<body>
 		<nav>
 			<img id="logo" src="/images/logo.png">
-			<a href="/account/user.html">My Account</a>
-			<a href="/account/logout">Log Out</a>
-			<img id="profile" src="/userpics/user.png">
+			<a href="/account/user.html"><img id="profile" src="/userpics/user.png"></a>
 		</nav>
-		Clock In<br>
-		Clock Out<br>
+		
+		<div class="clockbut"><span class="cltext">Clock In<span></div>
+		<div class="clockbut"><span class="cltext">Clock Out<span></div>
+		
+		<br><br>
+		
+		<form>
+			<input>
+			<input type="submit" value="Add Description">
+		</form>
+		
+		<br>
+		
+		<div>
+			Today's list of work:
+			<table style="border: 1px solid black">
+				<tr>
+					<td>Hello</td>
+					<td>World</td>
+				</tr>
+				<tr>
+					<td>Candy</td>
+					<td>Canes</td>
+				</tr>
+			</table>
+		</div>
 	</body>
 </html>
 <script>
@@ -38,9 +85,13 @@
 	http.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
 	http.onreadystatechange = function(){
 		if(http.readyState == 4 && http.status == 200){
-			userdict = JSON.parse(http.responseText);
-			console.log(userdict);
-			document.getElementById("profile").src = "/userpics/"+userdict.picture;
+			if(http.responseText == ""){
+				document.location = "/account";
+			} else{
+				userdict = JSON.parse(http.responseText);
+				console.log(userdict);
+				document.getElementById("profile").src = "/userpics/"+userdict.picture;
+			}
 		}
 	};
 	http.send("action=getuser");

@@ -76,3 +76,15 @@ https://stackoverflow.com/questions/20165605/detecting-ctrlc-in-node-js
 https://ciphertrick.com/2016/01/18/salt-hash-passwords-using-nodejs-crypto/
 https://www.w3schools.com/nodejs/nodejs_mysql.asp
 http://www.technicalkeeda.com/nodejs-tutorials/how-to-prevent-sql-injection-in-nodejs
+
+----------------------------
+
+2018-03-12
+
+weekly goal was met, parts will arrive before next week and login system is finished
+
+new goal: get at least the basics of the manual clocking page working and figure out a better way to transfer over session dict, talk to manager
+
+https://learn.sparkfun.com/tutorials/esp32-thing-hookup-guide#installing-the-esp32-arduino-core
+https://www.arduino.cc/en/Reference/WiFi
+https://www.arduino.cc/reference/en/language/variables/data-types/stringobject/
