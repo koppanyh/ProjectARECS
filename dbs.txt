@@ -1,17 +1,46 @@
 userdb
-uid email salt hashpw fname lname admin wage days
+	uid			int
+	email		varchar
+	salt		varchar
+	hashpw		varchar
+	fname		varchar
+	lname		varchar
+	admin		boolean
+	wage		float
+	days		varchar
+	picture		varchar
 
 projdb
-pid title description
+	pid			int
+	title		varchar
+	description	varchar
+	active		boolean
 
 workdb
-wid uid description pidref tstart tend
+	wid			int
+	uid			int
+	pid			int
+	description	varchar
+	day			date
+	tstart		time
+	tend		time
 
 rfiddb
-rid uid ts sid
+	rid			int
+	uid			int
+	sid			int
+	ts			datetime
 
 scannerdb
-sid devid name location
+	sid			int
+	devid		varchar
+	name		varchar
+	location	varchar
 
 daydb
-did uid day timestart timeend total
+	did			int
+	uid			int
+	day			date
+	tstart		time
+	tend		time
+	hours		float

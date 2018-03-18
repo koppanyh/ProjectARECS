@@ -5,21 +5,9 @@
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1.0">
 		<link rel="icon" href="/images/stop-watch.png">
+		<link rel="stylesheet" type="text/css" href="/style.css">
+		<script type="text/javascript" src="/ractive.js"></script>
 		<style>
-			#profile {
-				width: 50px;
-				height: 50px;
-				border-radius: 100%;
-				float: right;
-			}
-			body {
-				margin: 0;
-			}
-			nav {
-				background-color: #DDD;
-				padding: 10px;
-				margin-bottom: 10px;
-			}
 			.clockbut {
 				border: 1px solid black;
 				border-radius: 100%;
@@ -27,72 +15,255 @@
 				height: 100px;
 				text-align: center;
 				display: inline-block;
-				//background-color: #8f5;
-				background-color: #AAA;
-				//position: relative;
-				//position: absolute;
-				//left: 50%;
-				//margin-left: -50px;
-				//top: 50%;
-				//margin-top: -50px;
-				
+				//background-color: #AAA;
 			}
 			.cltext {
-				font-family: sans-serif;
 				font-weight: bold;
 				margin-top: 40px;
 				display: block;
 			}
+			table {
+				display: inline-table;
+				width: 90%;
+			}
+			input {
+				width: 100%;
+				box-sizing: border-box;
+			}
 		</style>
 	</head>
-	<body>
-		<nav>
-			<img id="logo" src="/images/logo.png">
-			<a href="/account/user.html"><img id="profile" src="/userpics/user.png"></a>
-		</nav>
+	<body id="body"></body>
+</html>
+
+<script id="template" type="text/ractive">
+	<nav>
+		<img id="logo" src="/images/logo.png">
+		<a href="/account/user.html"><img id="profilepic" src="/userpics/{{ppic}}"></a>
+	</nav>
+	
+	<div style="text-align: center">
+		{{#if .clocked}}
+		<div class="clockbut" style="background-color: #F85" on-click="clockout">
+			<span class="cltext">Clock Out<span>
+		</div><br><br>
 		
-		<div class="clockbut"><span class="cltext">Clock In<span></div>
-		<div class="clockbut"><span class="cltext">Clock Out<span></div>
-		
-		<br><br>
-		
-		<form>
-			<input>
-			<input type="submit" value="Add Description">
-		</form>
-		
+		<p>Clocked in at {{clockintime}}</p>
+		<p>Estimated hours for today: {{estimhours.toFixed(2)}}</p>
+		<p>Estimated leave time at {{leavetime}}</p>
 		<br>
 		
-		<div>
-			Today's list of work:
-			<table style="border: 1px solid black">
-				<tr>
-					<td>Hello</td>
-					<td>World</td>
-				</tr>
-				<tr>
-					<td>Candy</td>
-					<td>Canes</td>
-				</tr>
-			</table>
-		</div>
-	</body>
-</html>
+		<div style="width: 90%; margin: auto">
+			<input type="text" id="desc" style="width: calc(100% - 10em)" autofocus value="{{tmpdesc}}">
+			<button style="float: right; width: 10em" on-click="description">Add Description</button>
+			<div style="width: 32%; display: inline-block">
+				Start Time
+				<input id="tst" type="time" style="width: auto" value="{{tmpstart}}">
+				<button id="tmpstart" on-click="nowtime">Now</button>
+			</div>
+			<div style="width: 32%; display: inline-block">
+				End Time
+				<input id="ten" type="time" style="width: auto" value="{{tmpend}}">
+				<button id="tmpend" on-click="nowtime">Now</button>
+			</div>
+			<div style="width: 32%; display: inline-block">
+				Project
+				<select value="{{selproj}}">
+					{{#each .projs}}{{#if .active}}<option value={{.pid}}>{{.title}}</option>{{/if}}{{/each}}
+				</select>
+			</div>
+		</div><br><br>
+	
+		Today's work:<br>
+		<table border="1">
+			{{#if .today.length > 0}}<tr>
+				<th>Start</th>
+				<th>End</th>
+				<th>Project</th>
+				<th>Descrption</th>
+			</tr>{{/if}}
+			{{#each .today}}<tr>
+				<td on-click="editstart" style="min-width: 4em">
+					{{#if .estart}}<input type="time" value="{{.tstart}}">
+					{{else}}{{.tstart}}{{/if}}
+				</td>
+				<td on-click="editend" style="min-width: 4em">
+					{{#if .eend}}<input type="time" value="{{.tend}}">
+					{{else}}{{.tend}}{{/if}}
+				</td>
+				<td on-click="editprj" style="min-width: 6em">
+					{{#if .eprj}}<select value="{{.pid}}" style="width: 100%">
+						{{#each projs}}<option value={{.pid}}>{{.title}}</option>{{/each}}
+					</select>
+					{{else}}{{projs2[.pid]}}{{/if}}
+				</td>
+				<td on-click="editwork" style="width: 100%">
+					{{#if .edesc}}<input type="text" value="{{.description}}">
+					{{else}}{{.description}}{{/if}}
+				</td>
+			</tr>{{else}}<tr><td>No work yet</td></tr>{{/each}}
+		</table><br>
+		
+		{{#if .editing}}<button on-click="doneedit">Save Changes</button>{{/if}}
+		
+		{{else}}
+		<br><br><br><br><br><br>
+		<div class="clockbut" style="background-color: #8F5" on-click="clockin">
+			<span class="cltext">Clock In<span>
+		</div><br><br>
+		{{#if .totaltime > 0}}
+		<p>Clocked in at {{clockintime}}</p>
+		<p>Clocked out at {{clockouttime}}</p>
+		<p>Worked for {{totaltime.toFixed(2)}} hours</p>
+		{{/if}}
+		{{/if}}
+	</div><br><br>
+</script>
+
 <script>
-	var userdict = {}
-	var http = new XMLHttpRequest();
-	http.open("POST", "/account", true);
-	http.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-	http.onreadystatechange = function(){
-		if(http.readyState == 4 && http.status == 200){
-			if(http.responseText == ""){
-				document.location = "/account";
-			} else{
-				userdict = JSON.parse(http.responseText);
-				console.log(userdict);
-				document.getElementById("profile").src = "/userpics/"+userdict.picture;
-			}
+	var userdict = {};
+	
+	function gettime(dt){
+		if(dt == undefined) dt = new Date();
+		var st = dt.getMinutes();
+		if(st < 10) st = "0"+st;
+		st = dt.getHours()+":"+st;
+		if(dt.getHours() < 10) st = "0" + st;
+		return st;
+	}
+	
+	function httpRequest(prot, url, parms, func){
+		var http = new XMLHttpRequest();
+		http.open(prot, url, true);
+		if(prot == "POST")
+			http.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+		http.onreadystatechange = function(){
+			if(http.readyState == 4 && http.status == 200) func(http);
+		};
+		http.send(parms);
+	}
+	
+	var ractive = new Ractive({
+		target: '#body',
+		template: '#template',
+		data: {
+			ppic: "user.png",
+			clocked: false,
+			clockintime: "09:30",
+			estimhours: 8.23,
+			leavetime: "17:30",
+			clockouttime: "",
+			totaltime: 0,
+			editing: false,
+			tmpstart: gettime(),
+			tmpend: gettime(),
+			tmpdesc: "",
+			selproj: 0,
+			today: [
+				{wid: 1, pid: 2, tstart: "09:30", tend: "14:10", description: "Worked on stuff"},
+				{wid: 2, pid: 0, tstart: "14:10", tend: "17:30", description: "Worked on more stuff"}
+			],
+			projs: [{pid: 0, title: "None"}],
+			projs2: {0: ""}
+		},
+		oninit: function(){
+			this.on("clockin", function(event){
+				this.set("clocked", true);
+				var dt = new Date();
+				dt.setSeconds(0);
+				this.set("clockintime", gettime(dt));
+				dt.setTime(dt.getTime() + this.get("estimhours")*3600*1000);
+				this.set("leavetime", gettime(dt));
+				//send message to database to clock in
+				console.log("User clocked in at", this.get("clockintime"));
+			});
+			this.on("clockout", function(event){
+				this.set("clocked", false);
+				var dt = new Date();
+				dt.setSeconds(0);
+				this.set("clockouttime", gettime(dt));
+				var du = new Date();
+				var dv = this.get("clockintime").split(":");
+				du.setHours(dv[0]);
+				du.setMinutes(dv[1]);
+				du.setSeconds(0);
+				this.set("totaltime", (dt - du) / 3600000);
+				//send message to database to clock out
+				console.log("User clocked out at", this.get("clockouttime"));
+			});
+			
+			this.on("description", function(event){
+				if(this.get("tmpdesc").trim() != ""){
+					var entry = {
+						pid: this.get("selproj"),
+						tstart: this.get("tmpstart"),
+						tend: this.get("tmpend"),
+						description: this.get("tmpdesc")
+					};
+					this.push("today", entry);
+					//send this to server
+					console.log("Use added new entry", entry);
+					this.set({
+						tmpstart: gettime(),
+						tmpend: gettime(),
+						tmpdesc: ""
+					});
+				}
+			});
+			this.on("nowtime", function(event){
+				this.set(event.node.id, gettime());
+			});
+			
+			this.on("editwork", function(event){
+				this.set("editing", true);
+				event.set("edesc", true);
+			});
+			this.on("editprj", function(event){
+				this.set("editing", true);
+				event.set("eprj", true);
+			});
+			this.on("editstart", function(event){
+				this.set("editing", true);
+				event.set("estart", true);
+			});
+			this.on("editend", function(event){
+				this.set("editing", true);
+				event.set("eend", true);
+			});
+			this.on("doneedit", function(event){
+				this.set("editing", false);
+				var works = this.get("today");
+				works = works.map(function(itm){
+					delete itm.edesc;
+					delete itm.eprj;
+					delete itm.estart;
+					delete itm.eend;
+					return itm;
+				});
+				this.set("today", works);
+				//send this to the server for correction
+				console.log("Update these", works);
+			});
+		},
+	});
+	
+	httpRequest("POST","/account","action=getuser",function(http){
+		if(http.responseText == "") document.location = "/account";
+		else{
+			userdict = JSON.parse(http.responseText);
+			ractive.set("ppic", userdict.picture);
+			console.log(userdict);
 		}
-	};
-	http.send("action=getuser");
+	});
+	
+	httpRequest("GET","/api?action=getprojs&nodesc","",function(http){
+		if(http.responseText != ""){
+			var pjs = JSON.parse(http.responseText);
+			pjs.unshift({pid: 0, title: "None", active: 1});
+			ractive.set("projs", pjs);
+			var pjs2 = {};
+			pjs.forEach(function(itm){ pjs2[itm.pid] = itm.title; });
+			pjs2[0] = "";
+			ractive.set("projs2", pjs2);
+		}
+	});
 </script>
