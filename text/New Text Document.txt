@@ -97,3 +97,10 @@ https://ractive.js.org
 https://stackoverflow.com
 
 https://ux.stackexchange.com/questions/14170/is-there-a-standard-for-the-frequencies-and-or-duration-used-for-beeps
+
+https://raw.githubusercontent.com/playelek/pinout-doit-32devkitv1/master/pinoutDOIT32devkitv1.png
+https://github.com/miguelbalboa/rfid/blob/master/doc/rfidmifare.pdf
+https://techtutorialsx.com/2017/07/26/esp32-arduino-setting-a-soft-ap/
+https://techtutorialsx.com/2018/01/07/esp32-arduino-http-server-over-soft-ap/
+https://techtutorialsx.com/2017/12/01/esp32-arduino-asynchronous-http-webserver/
+https://github.com/me-no-dev/ESPAsyncWebServer

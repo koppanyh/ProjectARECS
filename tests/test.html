@@ -1,0 +1,23 @@
+<!DOCTYPE HTML>
+<html>
+	<head>
+		<title>Animation Test</title>
+		<meta charset="utf-8">
+	</head>
+	<body>
+		<b>ARECS Configuration Page</b><br><br>
+		<form action="/api" method="POST">
+			Node Identifier<br>
+			<input type="text" name="nid" style="background-color: #ffa" value="2342"><br>
+			*Changing this could break something, proceed with caution!<br><br>
+			Select Wifi Network<br>
+			<select id="ssids" name="ssid">
+				<option value="SSID 1">SSID 1</option>
+				<option value="SSID 2">SSID 2</option>
+			</select><br><br>
+			Type in Wifi Password<br>
+			<input type="password" name="pass"><br><br>
+			<input type="submit" value="Save and Reboot">
+		</form>
+	</body>
+</html>
