@@ -9,3 +9,7 @@ show a super simple interface with an advanced button somewhere, clicking that a
 node has to keep records until verified that the server received them
 
 in manager page, show cards of each person with picture, and hours, clicking will take to more detail page with charts and stuff
+
+alert admins of people who just walked in
+
+give flexible query capabilities for admins

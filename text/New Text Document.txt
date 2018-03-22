@@ -104,3 +104,12 @@ https://techtutorialsx.com/2017/07/26/esp32-arduino-setting-a-soft-ap/
 https://techtutorialsx.com/2018/01/07/esp32-arduino-http-server-over-soft-ap/
 https://techtutorialsx.com/2017/12/01/esp32-arduino-asynchronous-http-webserver/
 https://github.com/me-no-dev/ESPAsyncWebServer
+
+------------------------------
+
+2018-03-19
+
+weekly goal was met, got a good layout for the clock in page, worked on the hardware, and talked to manager (he was impressed)
+
+new goal: get a prototype of the hardware working and make it work with the api on the server
+
