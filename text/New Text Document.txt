@@ -113,3 +113,9 @@ weekly goal was met, got a good layout for the clock in page, worked on the hard
 
 new goal: get a prototype of the hardware working and make it work with the api on the server
 
+https://github.com/espressif/arduino-esp32/blob/master/libraries/DNSServer/examples/CaptivePortal/CaptivePortal.ino
+https://github.com/espressif/arduino-esp32/blob/master/libraries/ESP32/examples/ChipID/GetChipID/GetChipID.ino
+https://stackoverflow.com/questions/10820377/c-format-char-array-like-printf
+https://github.com/espressif/arduino-esp32/issues/985
+https://www.w3schools.com/jsref/coll_select_options.asp
+https://github.com/espressif/arduino-esp32/blob/master/libraries/Preferences/src/Preferences.h
