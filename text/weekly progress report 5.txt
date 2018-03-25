@@ -1,0 +1,27 @@
+2018-03-12 to 2018-03-19
+
+1) I was able to accomplish everything from the last goal. I got a good layout for the clock in page. I talked with my manager and he was pretty impressed by the whole thing so far. My research also came to the conclusion that the current way of passing information is the best way to go.
+
+2) I am very on task because I'm able to do what I plan and usually a little more. I'm also very motivated and excited about the project which seems to help.
+
+3) I've done research and worked on the implementation. I've also confirmed that what I am doing is what my manager had in mind for the project.
+
+3.1)
+https://learn.sparkfun.com/tutorials/esp32-thing-hookup-guide#installing-the-esp32-arduino-core
+https://www.arduino.cc/en/Reference/WiFi
+https://www.arduino.cc/reference/en/language/variables/data-types/stringobject/
+https://ractive.js.org/v0.x/0.5/get-started-with-node-js
+https://stackoverflow.com/questions/17015590/node-js-mysql-needing-persistent-connection
+https://ractive.js.org
+https://stackoverflow.com
+https://ux.stackexchange.com/questions/14170/is-there-a-standard-for-the-frequencies-and-or-duration-used-for-beeps
+https://raw.githubusercontent.com/playelek/pinout-doit-32devkitv1/master/pinoutDOIT32devkitv1.png
+https://github.com/miguelbalboa/rfid/blob/master/doc/rfidmifare.pdf
+https://techtutorialsx.com/2017/07/26/esp32-arduino-setting-a-soft-ap/
+https://techtutorialsx.com/2018/01/07/esp32-arduino-http-server-over-soft-ap/
+https://techtutorialsx.com/2017/12/01/esp32-arduino-asynchronous-http-webserver/
+https://github.com/me-no-dev/ESPAsyncWebServer
+
+3.2) No articles, books, or journals were referenced yet.
+
+4) I plan on getting the hardware to be at the first prototype stage to test out the workflow, and I plan on getting the api on the server working to support what is ready so far, and I plan on getting the clock in page working with real data.

@@ -119,3 +119,7 @@ https://stackoverflow.com/questions/10820377/c-format-char-array-like-printf
 https://github.com/espressif/arduino-esp32/issues/985
 https://www.w3schools.com/jsref/coll_select_options.asp
 https://github.com/espressif/arduino-esp32/blob/master/libraries/Preferences/src/Preferences.h
+
+https://www.arduino.cc/reference/en/language/variables/data-types/string/functions/toint/
+https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/number
+

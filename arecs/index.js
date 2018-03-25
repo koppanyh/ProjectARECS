@@ -145,6 +145,11 @@ function apiFunc(req, res){
 app.post('/api', urlencodedParser, function(req, res){ apiFunc(req, res); });
 app.get('/api', function(req, res){ apiFunc(Object.assign(req,{body:{}}), res); });
 
+app.post('/rfidevent', urlencodedParser, function(req, res){
+	console.log(req.body);
+	res.end("success");
+});
+
 server = app.listen(8080, function () {
 	var port = server.address().port;
 	console.log("ARECS server listening on port %s", port);

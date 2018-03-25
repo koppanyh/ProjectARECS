@@ -1,6 +1,6 @@
 const int ledpin = 2;
-const int tone1 = 18;
-const int tone2 = 19;
+const int tone1 = 15;
+const int tone2 = 4;
 
 void setup() {
   pinMode(ledpin, OUTPUT);
@@ -28,6 +28,11 @@ void loop() {
   delay(3000);
   
   beep(10000, 100); //config set
+  delay(3000);
+
+  beep(1000, 125); //access point activated
+  beep(500, 250);
+  beep(333, 375);
   delay(3000);
   
   for(int i=0; i<50; i++){ //failure

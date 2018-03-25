@@ -7,6 +7,8 @@
 
 String ssid = "ARECS_Node_1";
 String password = "password1";
+String service = "";
+uint16_t port = 0;
 
 IPAddress apIP(192, 168, 1, 1);
 DNSServer dnsServer;
@@ -30,13 +32,16 @@ const char index_html2[] PROGMEM =
   "    Select Wifi Network<br>\n"
   "    <select id=\"ssids\" name=\"ssid\">\n"
   "      <option value=\"SSID 1\">Loading SSIDS...</option>\n"
-  "      <option value=\"SSID 2\">SSID 2</option>\n"
   "    </select><br><br>\n"
   "    Type in WiFi Password<br>\n"
-  "    <input type=\"password\" name=\"pass\"><br><br>\n"
+  "    <input type=\"password\" name=\"pass\"><br>\n"
   "    Confirm WiFi Password<br>\n"
   "    <input type=\"password\" name=\"ssap\"><br><br>\n"
-  "    <input type=\"submit\" value=\"Save and Reboot\">\n"
+  "    Service Address<br>\n"
+  "    <input type=\"text\" name=\"serv\"><br>\n"
+  "    Service Port<br>\n"
+  "    <input type=\"number\" name=\"port\" value=\"8080\"><br><br>\n"
+  "    <input type=\"submit\" value=\"Save Configuration\">\n"
   "  </form>\n"
   "  </body>\n"
   "</html>\n"
@@ -78,11 +83,17 @@ void setup() {
   char uuidtmp[] = "%04X%08X";
   sprintf(uuid, uuidtmp, (uint16_t)(chipid>>32), (uint32_t)chipid);
 
-  configs.begin("wificreds", false);
+  configs.begin("wificreds", true);
   Serial.print("SSID: ");
   Serial.println(configs.getString("ssid"));
   Serial.print("Password: ");
   Serial.println(configs.getString("pass"));
+  Serial.print("Is Config: ");
+  Serial.println(configs.getBool("isConfig"));
+  Serial.print("Server: ");
+  Serial.println(configs.getString("server"));
+  Serial.print("Port: ");
+  Serial.println(configs.getUShort("port"));
   configs.end();
 
   server.on("/", HTTP_GET, [](AsyncWebServerRequest* request){
@@ -102,17 +113,22 @@ void setup() {
   });
 
   server.on("/configure", HTTP_POST, [](AsyncWebServerRequest* request){
-    if(request->hasParam("ssid", true) && request->hasParam("pass", true) && request->hasParam("ssap", true)){
+    if(request->hasParam("ssid", true) && request->hasParam("pass", true) && request->hasParam("ssap", true) &&
+    request->hasParam("serv", true) && request->hasParam("port", true)){
       AsyncWebParameter* p;
       AsyncWebParameter* q;
-      AsyncWebParameter* r;
       p = request->getParam("pass", true);
       q = request->getParam("ssap", true);
       if(p->value() == q->value()){
-        r = request->getParam("ssid", true);
+        AsyncWebParameter* r = request->getParam("ssid", true);
+        AsyncWebParameter* s = request->getParam("serv", true);
+        AsyncWebParameter* t = request->getParam("port", true);
         configs.begin("wificreds", false);
         configs.putString("ssid", r->value());
         configs.putString("pass", p->value());
+        configs.putString("server", s->value());
+        configs.putUShort("port", (uint16_t)(t->value().toInt()));
+        configs.putBool("isConfig", true);
         configs.end();
         request->redirect("/askrestart");
       } else{
@@ -126,11 +142,15 @@ void setup() {
   });
 
   server.on("/askrestart", HTTP_GET, [](AsyncWebServerRequest* request){
-    request->send(200, "text/html", "<a href=\"/restart\">Restart to apply changes</a>");
+    request->send(200, "text/html",
+      "<meta charset=\"utf-8\">\n"
+      "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n"
+      "<a href=\"/restart\">Restart to apply changes</a>\n"
+    );
   });
 
   server.on("/restart", HTTP_GET, [](AsyncWebServerRequest* request){
-    request->send(200, "text/html", "Goodbye");
+    request->send(200, "text/html", "<h1>Goodbye</h1>");
     Serial.println("Restarting...");
     ESP.restart();
   });
