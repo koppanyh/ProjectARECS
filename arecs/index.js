@@ -4,9 +4,9 @@ const session = require('client-sessions');
 const fs = require('fs');
 const mysql = require('mysql');
 const crypto = require('crypto');
-const Ractive = require('ractive');
+//const Ractive = require('ractive');
 
-Ractive.DEBUG = false;
+//Ractive.DEBUG = false;
 var app = express();
 app.use(express.static("public"));
 var server;
@@ -118,15 +118,19 @@ app.get('/account/user.html', function(req, res){
 });*/
 
 function apiFunc(req, res){
-	if(!isLoggedIn(req)) res.end("Must be logged in to use API");
+	var dat = Object.assign(req.query, req.body);
+	if(dat.action == "rfidevent"){
+		console.log(req.body);
+		res.end("success");
+	}
+	else if(dat.action == "gettime") res.end(Math.floor(Date.now() / 1000) + "");
+	else if(!isLoggedIn(req)) res.end("Must be logged in to use API");
 	else{
-		var dat = Object.assign(req.query, req.body);
-		
 		if(dat.action == "getprojs"){
 			var query = "SELECT ";
 			if("nodesc" in dat) query += "pid,title,active";
 			else query += "*";
-			query += " from projdb";
+			query += " FROM projdb";
 			if("active" in dat) query += " WHERE active=1";
 			pool.getConnection(function(err, conn){
 				if(err) console.error(err);
@@ -139,16 +143,18 @@ function apiFunc(req, res){
 				}
 			});
 		}
+		//getrfidevents (only for admins)
 		else res.end("Unknown API Action");
 	}
 }
 app.post('/api', urlencodedParser, function(req, res){ apiFunc(req, res); });
 app.get('/api', function(req, res){ apiFunc(Object.assign(req,{body:{}}), res); });
 
+/* !!!!!!! Deprecated, use real API !!!!!!!!!!!
 app.post('/rfidevent', urlencodedParser, function(req, res){
 	console.log(req.body);
 	res.end("success");
-});
+});*/
 
 server = app.listen(8080, function () {
 	var port = server.address().port;

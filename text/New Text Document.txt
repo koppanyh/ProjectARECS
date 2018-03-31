@@ -123,3 +123,16 @@ https://github.com/espressif/arduino-esp32/blob/master/libraries/Preferences/src
 https://www.arduino.cc/reference/en/language/variables/data-types/string/functions/toint/
 https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/number
 
+-------------------------------
+
+2018-03-26
+
+weekly goal was mostly met, I got a pretty nice prototype ready (almost 100% complete) and it can communicate with the server, does not actually do anything with data and clocking page not working with real data
+
+new goal: finish the firmware, start designing the case, work on the interface
+
+https://www.electrictoolbox.com/unix-timestamp-javascript/
+https://esp32.com/viewtopic.php?t=1468
+https://arduino.stackexchange.com/questions/12587/how-can-i-handle-the-millis-rollover
+https://stackoverflow.com/questions/1964297/split-div-into-2-columns-using-css
+https://www.amcharts.com/demos/gantt-chart-dates/

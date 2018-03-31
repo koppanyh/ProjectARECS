@@ -339,7 +339,7 @@ bool sendrfid(String id){
     notify(2);
     SOS();
   } else{
-    client.print("POST /rfidevent HTTP/1.1\r\nHost: ");
+    client.print("POST /api?action=rfidevent HTTP/1.1\r\nHost: ");
     client.print(siteport); //"localhost:8080"
     client.print(
       "\r\n"
@@ -348,15 +348,15 @@ bool sendrfid(String id){
       "Accept-Language: en-US,en;q=0.5\r\n"
       "Accept-Encoding: gzip, deflate\r\n"
       "Content-Type: application/x-www-form-urlencoded\r\n"
-      "Content-Length: 63\r\n"
+      "Content-Length: 59\r\n"
       "Connection: keep-alive\r\n"
       "Upgrade-Insecure-Requests: 1\r\n"
       "\r\n"
       "node=");
     client.print(uuid);
-    client.print("&time=2018-03-24-13-28&id=");
+    client.print("&time=001522108861&id=");
     client.print(id);
-    //node=001122334455&time=2018-03-24-13-28&id=00112233445566778899
+    //node=001122334455&time=001522108861&id=00112233445566778899
 
     //check if the server agrees, wait 10 seconds
     for(int i=0; i<100; i++){

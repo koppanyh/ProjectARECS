@@ -13,6 +13,9 @@ nav {
 	padding: 10px;
 	margin-bottom: 10px;
 }
+nav #logo {
+	max-height: 50px;
+}
 button {
 	border-radius: 5px;
 }

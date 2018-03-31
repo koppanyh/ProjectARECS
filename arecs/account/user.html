@@ -5,10 +5,235 @@
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1.0">
 		<link rel="icon" href="/images/stop-watch.png">
+		<link rel="stylesheet" type="text/css" href="/style.css">
+		<script type="text/javascript" src="/ractive.js"></script>
+		<script type="text/javascript" src="/core.js"></script>
+		
+		<script src="/amCharts/amcharts.js"></script>
+		<script src="/amCharts/serial.js"></script>
+		<script src="/amCharts/gantt.js"></script>
+		<script src="/amCharts/plugins/export/export.min.js"></script>
+		<link rel="stylesheet" href="/amCharts/plugins/export/export.css" type="text/css" media="all" />
+		<script src="/amCharts/themes/light.js"></script>
+		
+		<style>
+			#left {
+				float: left;
+				width: 40%;
+				padding: 10px;
+				box-sizing: border-box;
+			}
+			#right {
+				float: right;
+				width: 60%;
+				padding: 10px;
+				box-sizing: border-box;
+			}
+		</style>
 	</head>
-	<body>
-		Welcome user.<br>
-		<a href="/account/logout">Log Out</a></br>
-		<a href="/">Home</a>
-	</body>
+	<body id="body"></body>
 </html>
+
+<script id="template" type="text/ractive">
+	<nav>
+		<img id="profilepic" src="/userpics/{{user.picture}}">
+		<img id="logo" src="/images/logo.png"><br>
+		<a href="/">Home</a>&nbsp;&nbsp;
+		<a href="/account/logout">Log Out</a>
+	</nav>
+	
+	<div id="left">
+		<img src="/userpics/{{user.picture}}"><br>
+		<a href="">Change Picture</a>
+	</div>
+	
+	<div id="right">
+		{{user.fname}} {{user.lname}}<br>
+		{{user.email}}<br>
+	</div>
+	<br style="clear: both">
+	
+	<div id="graph" style="width: 100%; height: 500px"></div>
+</script>
+
+<script>
+	var userdict = {};
+	
+	var ractive = new Ractive({
+		target: '#body',
+		template: '#template',
+		data: {
+			user: {
+				picture: "user.png",
+				fname: "Loading",
+				lname: "Loading",
+				email: "Loading"
+			}
+		}
+	});
+	
+	httpRequest("POST","/account","action=getuser",function(http){
+		if(http.responseText == "") document.location = "/account";
+		else{
+			userdict = JSON.parse(http.responseText);
+			ractive.set("user", userdict);
+			console.log(userdict);
+		}
+	});
+	
+	var chart = AmCharts.makeChart( "graph", {
+		"type": "gantt",
+		"theme": "light",
+		"marginRight": 70,
+		"period": "mm",
+		"dataDateFormat": "JJ:NN",
+		"columnWidth": 0.5,
+		"valueAxis": { "type": "date" },
+		"brightnessStep": 3,
+		"graph": {
+			"fillAlphas": 1,
+			"lineAlpha": 1,
+			"lineColor": "#fff",
+			"fillAlphas": 0.85,
+			"balloonText": "<b>[[task]]</b>:<br />[[start]] - [[end]]"
+		},
+		"rotate": true,
+		"categoryField": "day",
+		"segmentsField": "work",
+		"colorField": "color",
+		"startDateField": "start",
+		"endDateField": "end",
+		"dataProvider": [
+			{
+				"day": "Sunday",
+				"work": [
+					//#ffaaaa #880000
+				]
+			}, {
+				"day": "Monday",
+				"work": [
+					{
+						"start": "09:05",
+						"end": "17:05",
+						"color": "#aaffaa",
+						"task": "Monday"
+					}, {
+						"start": "09:06",
+						"end": "10:30",
+						"color": "#008800",
+						"task": "Talked with Rochelle"
+					}, {
+						"start": "10:40",
+						"end": "12:20",
+						"task": "DB Builder"
+					}, {
+						"start": "13:20",
+						"end": "17:04",
+						"task": "DB Builder"
+					}
+				]
+			}, {
+				"day": "Tuesday",
+				"work": [
+					{
+						"start": "08:53",
+						"end": "16:53",
+						"color": "#aaaaff",
+						"task": "Tuesday"
+					}, {
+						"start": "09:00",
+						"end": "12:11",
+						"color": "#000088",
+						"task": "DB Builder"
+					}, {
+						"start": "12:56",
+						"end": "16:50",
+						"task": "Ricky's bug"
+					}
+				]
+			}, {
+				"day": "Wednesday",
+				"work": [
+					{
+						"start": "09:30",
+						"end": "17:30",
+						"color": "#ffaaaa",
+						"task": "Wednesday"
+					}, {
+						"start": "10:00",
+						"end": "12:00",
+						"color": "#880000",
+						"task": "Producing specifications"
+					}, {
+						"start": "13:00",
+						"end": "17:20",
+						"task": "Development"
+					}
+				]
+			}, {
+				"day": "Thursday",
+				"work": [
+					{
+						"start": "09:10",
+						"end": "17:10",
+						"color": "#aaffaa",
+						"task": "Thursday"
+					}, {
+						"start": "09:13",
+						"end": "12:24",
+						"color": "#008800",
+						"task": "Party"
+					}, {
+						"start": "12:40",
+						"end": "15:12",
+						"task": "Siemens Meeting"
+					}, {
+						"start": "15:12",
+						"end": "17:10",
+						"task": "Ricky help"
+					}
+				]
+			}, {
+				"day": "Friday",
+				"work": [
+					{
+						"start": "09:40",
+						"end": "17:40",
+						"color": "#aaaaff",
+						"task": "Friday"
+					}, {
+						"start": "09:43",
+						"end": "10:20",
+						"color": "#000088",
+						"task": "Rochelle talking"
+					}, {
+						"start": "10:21",
+						"end": "12:11",
+						"task": "UI Demo"
+					}, {
+						"start": "13:09",
+						"end": "17:37",
+						"task": "Siemens Meeting"
+					}
+				]
+			}, {
+				"day": "Saturday",
+				"work": [
+					//#ffaaaa #880000
+				]
+			}
+		],
+		"valueScrollbar": { "autoGridCount": true },
+		"chartCursor": {
+			"cursorColor": "#55bb76",
+			"valueBalloonsEnabled": false,
+			"cursorAlpha": 0,
+			"valueLineAlpha": 0.5,
+			"valueLineBalloonEnabled": true,
+			"valueLineEnabled": true,
+			"zoomable": false,
+			"valueZoomable": true
+		},
+		"export": { "enabled": true }
+	});
+</script>
