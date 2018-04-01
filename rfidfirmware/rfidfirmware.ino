@@ -7,14 +7,6 @@
  * this code.
  */
 
-/*
- * TODO
- * occasionally poll server for time to stay in sync
- * be able to get date time strings accurate to 1 minute
- * implement buffer for datas that didn't make it to server
- * implement way to reconnect to wifi/server if not working
- */
-
 #include <WiFi.h>
 #include <SPI.h>
 #include <MFRC522.h>
@@ -23,6 +15,7 @@
 #include <ESPAsyncWebServer.h> //https://github.com/me-no-dev/ESPAsyncWebServer
 #include <DNSServer.h>
 #include <Preferences.h>
+#include "rfidevent.h"
 
 //hardware pin config
 const int statLed = 2;
@@ -30,8 +23,8 @@ const int tone1 = 15;
 const int tone2 = 4;
 const int RST_PIN = 22;
 const int SDA_PIN = 5;
-const int configPin = 25;
-const int apIdPins[4] = {32, 33, 34, 35};
+const int configPin = 25; //button to enable config ap mode
+const int apIdPins[4] = {32, 33, 34, 35}; //least significant to most
 
 //wifi config
 String ssid = "asdfasdf";
@@ -42,16 +35,26 @@ String site = "192.168.1.123";
 uint16_t port = 1234;
 String siteport = "192.168.1.123:1234";
 
+//time variables
+uint64_t setTime = 0;
+uint64_t servTime = 0;
+bool timeWasInit = false;
+
 //other stuff
 AsyncWebServer server(80);
 DNSServer dnsServer;
 Preferences configs;
 MFRC522 mfrc522(SDA_PIN, RST_PIN);
-const char hexcodes[16] = {'0','1','2','3','4','5','6','7',
-  '8','9','A','B','C','D','E','F'};
+const char hexcodes[16] = {'0','1','2','3','4',
+  '5','6','7','8','9','A','B','C','D','E','F'};
 bool isConfig = false;
 int counter = 0;
 bool ledOn = false;
+
+//rfid buffer/queue
+RFIDEvent rfidbuff[256];
+int buffread = 0;
+int buffwrite = 0;
 
 //configuration page html
 const char index_html1[] PROGMEM =
@@ -134,10 +137,24 @@ void setup() {
   Serial.println();
   Serial.println("ARECS RFID Node V1 by KH-Labs");
 
+  //get hex from dip switch for unique ssid
+  uint8_t v = 0;
+  for(int i=3; i>=0; i--){
+    bool a = digitalRead(apIdPins[i]);
+    Serial.print(a);
+    Serial.print(" ");
+    v <<= 1;
+    if(a) v |= 1;
+  }
+  Serial.print((int)v);
+  Serial.print(" ");
+  Serial.println(hexcodes[v]);
+
   //get chip UUID
   uint64_t chipid = ESP.getEfuseMac();
   char uuidtmp[] = "%04X%08X";
   sprintf(uuid, uuidtmp, (uint16_t)(chipid>>32), (uint32_t)chipid);
+  uuid[11] = hexcodes[v];
 
   //check which mode to be in
   configs.begin("wificreds", true);
@@ -150,24 +167,15 @@ void setup() {
   if(isConfig){
     Serial.println("Mode: AP Config");
 
-    //get hex from dip switch for unique ssid
-    uint8_t v = 0;
-    for(int i=3; i>=0; i--){
-      bool a = digitalRead(apIdPins[i]);
-      Serial.print(a);
-      Serial.print(" ");
-      v <<= 1;
-      if(a) v |= 1;
-    }
-    Serial.print((int)v);
-    Serial.print(" ");
-    Serial.println(hexcodes[v]);
-
     //generate ssid and password based on dip switch
     ssid = "ARECS_Node_";
     ssid += hexcodes[v];
     pass = "password";
     pass += hexcodes[v];
+    Serial.print("Starting Config AP: ");
+    Serial.print(ssid);
+    Serial.print(" / ");
+    Serial.println(pass);
 
     //activate AP mode with generated ssid and password
     WiFi.mode(WIFI_AP);
@@ -281,6 +289,12 @@ void setup() {
     //connect to wifi, error if not
     if(!connectWifi()) SOS();
 
+    //sync time with the server
+    timeWasInit = settime();
+
+    //clear rfid buffer
+    for(int i=0; i<256; i++) rfidbuff[i].active = false;
+
     //beep a second time to let the user know that it's ready for rfid
     notify(1);
   }
@@ -307,37 +321,75 @@ void loop() {
 
     //read the rfid card and send data to server
     if(mfrc522.PICC_IsNewCardPresent() && mfrc522.PICC_ReadCardSerial()){
-      String cid = "";
-      for(int i=0; i<10; i++){
-        Serial.print((int)mfrc522.uid.uidByte[i]);
-        Serial.print(" ");
-        //client.print((int)mfrc522.uid.uidByte[i]);
-        //client.print(" ");
-        cid += hexcodes[((mfrc522.uid.uidByte[i]) >> 4) & 0x0f];
-        cid += hexcodes[(mfrc522.uid.uidByte[i]) & 0x0f];
-      }
-      Serial.println();
-      Serial.println(cid);
-      //client.println("");
       digitalWrite(statLed, LOW);
+      RFIDEvent card;
+      card.tm = gettime();
+      card.active = true;
+      card.id = "";
+      for(int i=0; i<10; i++){
+        card.id += hexcodes[((mfrc522.uid.uidByte[i]) >> 4) & 0x0f];
+        card.id += hexcodes[(mfrc522.uid.uidByte[i]) & 0x0f];
+      }
       notify();
-      sendrfid(cid);
-      digitalWrite(statLed, HIGH);
+      Serial.print(card.id);
+      Serial.print(" @ ");
+      Serial.println(card.tm);
+      sendrfid(card);
       mfrc522.PICC_HaltA();
+    }
+    digitalWrite(statLed, HIGH);
+
+    //sync time with server every hour
+    if((esp_timer_get_time() / 1000000 - setTime) > 3600){
+      if(settime()) Serial.println("Time synced");
+      else Serial.println("Could not sync time");
+    }
+
+    //sync time if it wasn't at least once
+    if(!timeWasInit){
+      checkWiFi();
+      WiFiClient client;
+      if(client.connect(site.c_str(), port)){
+        client.stop();
+        timeWasInit = settime();
+      } else client.stop();
+      delay(500);
+    }
+
+    //send rfid events in buffer
+    if(buffread != buffwrite){
+      checkWiFi();
+      WiFiClient client;
+      if(client.connect(site.c_str(), port)){
+        client.stop();
+        sendrfid(rfidbuff[buffread]);
+        rfidbuff[buffread].active = false;
+        buffread++;
+        if(buffread >= 256) buffread = 0;
+      } else client.stop();
+      delay(500);
     }
   }
 }
 
-// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
-bool sendrfid(String id){
+//function to send rfid data to server
+bool sendrfid(RFIDEvent card){
+  checkWiFi();
   WiFiClient client;
 
   //connect to the server, error if not
   if(!client.connect(site.c_str(), port)){
-    // !!!!!!!!!!!!!!!!!!!! put this in a buffer instead !!!!!!!!!!!!!!!!!!!!
     Serial.println("Server connection failed!");
     notify(2);
-    SOS();
+
+    if(rfidbuff[buffwrite].active){
+      Serial.println("Out of rfid buffer space");
+      notify(2);
+    } else{
+      rfidbuff[buffwrite] = card;
+      buffwrite++;
+      if(buffwrite >= 256) buffwrite = 0;
+    }
   } else{
     client.print("POST /api?action=rfidevent HTTP/1.1\r\nHost: ");
     client.print(siteport); //"localhost:8080"
@@ -354,31 +406,85 @@ bool sendrfid(String id){
       "\r\n"
       "node=");
     client.print(uuid);
-    client.print("&time=001522108861&id=");
-    client.print(id);
+    client.print("&time=");
+    client.print(card.tm); //"001522108861"
+    client.print("&id=");
+    client.print(card.id); //"00112233445566778899"
     //node=001122334455&time=001522108861&id=00112233445566778899
 
-    //check if the server agrees, wait 10 seconds
-    for(int i=0; i<100; i++){
-      if(client.available()) break;
+    //check if the server agrees, wait 30 seconds
+    for(int i=0; i<300; i++){
+      if(!client.connected()) break;
+      if(client.available()){
+        String t = client.readString();
+        if(t.indexOf("success") == -1) notify(2);
+
+        client.stop();
+        return true;
+      }
       delay(100);
     }
-    String t = client.readString();
-    if(t.indexOf("success") == -1) notify(2);
   }
   
   client.stop();
-  
-  //if the server disconnects then error
-  //if(!client.connected()){
+  return false;
+}
 
-  //read data from server and echo it back
-  //if(client.available()){
-  //  String t = client.readString();
-  //    client.stop();
-  //  client.println(t);
-  
-  return true;
+//function to sync time with server
+bool settime(){
+  checkWiFi();
+  WiFiClient client;
+
+  if(client.connect(site.c_str(), port)){
+    client.print("GET /api?action=gettime HTTP/1.1\r\nHost: ");
+    client.print(siteport); //"localhost:1234"
+    client.print(
+      "\r\nUser-Agent: Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:59.0) Gecko/20100101 Firefox/59.0\r\n"
+      "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\r\n"
+      "Accept-Language: en-US,en;q=0.5\r\n"
+      "Accept-Encoding: gzip, deflate\r\n"
+      "DNT: 1\r\n"
+      "Connection: keep-alive\r\n"
+      "Upgrade-Insecure-Requests: 1\r\n\r\n");
+
+    for(int i=0; i<300; i++){
+      if(!client.connected()) break;
+      if(client.available()){
+        setTime = esp_timer_get_time() / 1000000;
+        
+        String t = client.readString();
+        t = t.substring(t.lastIndexOf("\r\n\r\n") + 4);
+        Serial.print("Got time: ");
+        Serial.println(t);
+
+        servTime = 0;
+        for(int j=0; j<t.length(); j++){
+          servTime *= 10;
+          servTime += t.charAt(j) - 48;
+        }
+        client.stop();
+        return true;
+      }
+      delay(100);
+    }
+  } else{
+    Serial.println("Server connection failed!");
+    notify(2);
+  }
+
+  client.stop();
+  return false;
+}
+
+//helper function to get current time padded
+String gettime(){
+  String ntime = "000000000000";
+  uint64_t nowtime = esp_timer_get_time() / 1000000 - setTime + servTime;
+  for(int i=11; i>=0; i--){
+    ntime.setCharAt(i, (char)(nowtime % 10 + 48));
+    nowtime /= 10;
+  }
+  return ntime;
 }
 
 //helper function to connect to wifi
@@ -394,17 +500,26 @@ bool connectWifi(){
     digitalWrite(statLed, HIGH);
     delay(500);
     Serial.print('.');
+    configButton();
     count++;
     if(count >= 60){
-      return false;
-      Serial.println("");
+      Serial.println();
       Serial.println("WiFi connection failed!");
+      return false;
     }
   }
   Serial.println("");
   Serial.print("Connected with IP ");
   Serial.println(WiFi.localIP());
   return true;
+}
+
+//helper function to check wifi connection and handle if problem
+void checkWiFi(){
+  if(WiFi.status() != WL_CONNECTED){
+    Serial.println("No WiFi Connection");
+    SOS();
+  }
 }
 
 //activates config mode if button is pressed
@@ -421,22 +536,33 @@ void configButton(){
   }
 }
 
-//flashes the light to indicate error
+//flashes the light to indicate not connected to WiFi, tries to reconnect
 void SOS(){
+  notify(2);
   digitalWrite(statLed, LOW);
+  WiFi.disconnect();
+  WiFi.begin(ssid.c_str(), pass.c_str());
   delay(3000);
   int one[9] = {1,1,1,3,3,3,1,1,1};
   int two[9] = {1,1,1,1,1,1,1,1,10};
-  while(true){
+  int counter = 0;
+  while(WiFi.status() != WL_CONNECTED){
     for(int i=0; i<9; i++){
       digitalWrite(statLed, HIGH);
       delay(100*one[i]);
       digitalWrite(statLed, LOW);
       delay(100*two[i]);
     }
+    counter++;
+    if(counter >= 18){
+      Serial.println("Trying to connect again");
+      notify(2);
+      WiFi.disconnect();
+      WiFi.begin(ssid.c_str(), pass.c_str());
+      counter = 0;
+    }
     configButton();
   }
-  // !!!!!!!!!!!!!!!!!!!!!! try to get connected back up !!!!!!!!!!!!!!!!!!!!!
 }
 
 //generates a tone, used for status noises

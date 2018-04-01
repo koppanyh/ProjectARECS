@@ -120,10 +120,18 @@ app.get('/account/user.html', function(req, res){
 function apiFunc(req, res){
 	var dat = Object.assign(req.query, req.body);
 	if(dat.action == "rfidevent"){
-		console.log(req.body);
+		var rf = req.body; //{node:"", time:"", id:""}
+		console.log(rf);
+		var tm = new Date();
+		tm.setTime(rf.time * 1000);
+		//if datetime is not from past week, use current time
+		console.log(tm, (new Date()));
 		res.end("success");
 	}
-	else if(dat.action == "gettime") res.end(Math.floor(Date.now() / 1000) + "");
+	else if(dat.action == "gettime"){
+		console.log("Got time at", (new Date()));
+		res.end(Math.floor(Date.now() / 1000) + "");
+	}
 	else if(!isLoggedIn(req)) res.end("Must be logged in to use API");
 	else{
 		if(dat.action == "getprojs"){
@@ -149,12 +157,6 @@ function apiFunc(req, res){
 }
 app.post('/api', urlencodedParser, function(req, res){ apiFunc(req, res); });
 app.get('/api', function(req, res){ apiFunc(Object.assign(req,{body:{}}), res); });
-
-/* !!!!!!! Deprecated, use real API !!!!!!!!!!!
-app.post('/rfidevent', urlencodedParser, function(req, res){
-	console.log(req.body);
-	res.end("success");
-});*/
 
 server = app.listen(8080, function () {
 	var port = server.address().port;
