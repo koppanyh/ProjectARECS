@@ -1,0 +1,113 @@
+<!DOCTYPE HTML>
+<html>
+	<head>
+		<title>ARECS - Employee Management</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<link rel="icon" href="/images/stop-watch.png">
+		<link rel="stylesheet" type="text/css" href="/style.css">
+		<script type="text/javascript" src="/ractive.js"></script>
+		<script type="text/javascript" src="/core.js"></script>
+		<style>
+			.card {
+				display: inline-block;
+				background-color: #FFD;
+				border: 1px solid black;
+				border-radius: 5px;
+				margin: 10px;
+				padding: 10px;
+				text-align: center;
+			}
+		</style>
+	</head>
+	<body id="body"></body>
+</html>
+
+<script id="template" type="text/ractive">
+	<nav>
+		<img id="logo" src="/images/logo.png">
+		<a href="/account/user.html"><img id="profilepic" src="/userpics/{{ppic}}"></a><br>
+		<a href="/">Home</a>
+	</nav>
+	
+	<div on-click="closemodal" style="display: {{modla}}">
+		<div class="modal"></div>
+		<img src="images/loading.gif" class="loading">
+	</div>
+	
+	<div style="text-align: center">
+		{{#each employees}}
+		<a href="/viewprofile.html?id={{uid}}"><div class="card">
+			<img src="/userpics/{{picture}}" style="height: 100px"><br>
+			{{fname}} {{lname}}<br>
+			{{email}}<br>
+			<!--${{wage}}-->
+		</div></a>
+		{{/each}}
+	</div><br><br>
+</script>
+
+<script>
+	var userdict = {};
+	
+	var ractive = new Ractive({
+		target: '#body',
+		template: '#template',
+		data: {
+			modla: "",
+			isAdmin: false,
+			ppic: "user.png",
+			employees: [{picture: "user.png", fname: "Loading",
+				lname: "Loading", email: "Loading", uid: 0, wage: "Loading"}]
+		},
+		oninit: function(){
+			this.on("closemodal", function(event){
+				this.set("modla", "none");
+			});
+			/*this.on("clockin", function(event){
+				this.set("clocked", true);
+				var dt = new Date();
+				dt.setSeconds(0);
+				this.set("clockintime", gettime(dt));
+				dt.setTime(dt.getTime() + this.get("estimhours")*3600*1000);
+				this.set("leavetime", gettime(dt));
+				//send message to database to clock in
+				console.log("User clocked in at", this.get("clockintime"));
+			});*/
+		},
+	});
+	
+	httpRequest("POST","/account","action=getuser",function(http){
+		if(http.responseText == "") document.location = "/account";
+		else{
+			userdict = JSON.parse(http.responseText);
+			if(!userdict.admin) document.location = "/account";
+			else{
+				ractive.set("ppic", userdict.picture);
+				ractive.set("isAdmin", userdict.admin);
+				console.log(userdict);
+			}
+		}
+	});
+	
+	httpRequest("POST","/api","action=getemployees",function(http){
+		if(http.responseText != ""){
+			var employees = JSON.parse(http.responseText);
+			if(employees[0].error){
+				ractive.set("employees[0].fname", "Database");
+				ractive.set("employees[0].lname", "Error");
+			} else{
+				employees.sort(function(a,b){
+					a = a.fname + " " + a.lname;
+					b = b.fname + " " + b.lname;
+					if(a < b) return -1;
+					if(a > b) return 1;
+					return 0;
+				});
+				ractive.set("employees", employees);
+				console.log(employees);
+			}
+			ractive.set("modla", "none");
+		}
+	});
+</script>

@@ -4,9 +4,7 @@ const session = require('client-sessions');
 const fs = require('fs');
 const mysql = require('mysql');
 const crypto = require('crypto');
-//const Ractive = require('ractive');
 
-//Ractive.DEBUG = false;
 var app = express();
 app.use(express.static("public"));
 var server;
@@ -15,24 +13,31 @@ var urlencodedParser = bodyParser.urlencoded({extended: false});
 ///////////////////////////////// mysql stuff ////////////////////////////////////
 var pool = null;
 fs.readFile("db.key", function(err, dat){
-	var dbkey = JSON.parse(dat.toString());
-	pool = mysql.createPool({
-		host: dbkey.hostsite,
-		database: dbkey.database,
-		user: dbkey.username,
-		password: dbkey.password
-	});
-	console.log("MySQL pool started");
+	if(err){
+		console.error(err);
+		console.error("Cannot access db.key file");
+		console.error("Cannot initialize MySQL pool");
+	} else{
+		var dbkey = JSON.parse(dat.toString());
+		pool = mysql.createPool({
+			host: dbkey.hostsite,
+			database: dbkey.database,
+			user: dbkey.username,
+			password: dbkey.password
+		});
+		console.log("MySQL pool started");
+	}
 });
 
 process.on("SIGINT", function(){
 	//add all cleanup code here
-	console.log("");
-	pool.end(function(err){
+	console.log();
+	if(pool) pool.end(function(err){
 		if(err) console.error(err);
 		console.log("MySQL pool closed");
 		process.exit();
 	});
+	else console.log("MySQL pool wasn't initialized");
 	setTimeout(function(){ process.exit(); }, 3000);
 });
 
@@ -55,7 +60,7 @@ app.get('/', function(req, res){
 function isLoggedIn(req){ return req.session && req.session.user; }
 app.post('/account', urlencodedParser, function(req, res){
 	if(req.body.action == "login"){
-		pool.getConnection(function(err, conn){
+		if(pool) pool.getConnection(function(err, conn){
 			if(err) console.error(err);
 			else{
 				conn.query("SELECT * from userdb WHERE email=?", [req.body.email], function(err, result){
@@ -78,6 +83,10 @@ app.post('/account', urlencodedParser, function(req, res){
 				});
 			}
 		});
+		else{
+			console.log("login: MySQL pool not initialized");
+			res.redirect("/account/login.html?err3");
+		}
 	} else if(req.body.action == "getuser"){
 		if(req.session) res.send(req.session.user);
 		else res.send("");
@@ -105,17 +114,6 @@ app.get('/account/user.html', function(req, res){
 });
 
 ///////////////////////////////////// api stuff //////////////////////////////////
-/*app.get('/test2.html', function(req, res){
-	fs.readFile('test2.html', function(err, dat){
-		var ractive = new Ractive({
-			template: dat.toString(),
-			data: {
-				asdf: "this is from the server"
-			}
-		});
-		res.send(ractive.toHTML());
-	});
-});*/
 
 function apiFunc(req, res){
 	var dat = Object.assign(req.query, req.body);
@@ -140,16 +138,50 @@ function apiFunc(req, res){
 			else query += "*";
 			query += " FROM projdb";
 			if("active" in dat) query += " WHERE active=1";
-			pool.getConnection(function(err, conn){
-				if(err) console.error(err);
-				else{
+			if(pool) pool.getConnection(function(err, conn){
+				if(err){
+					console.error(err);
+					res.send('{"error":"Database connection error"}');
+				} else{
 					conn.query(query,[],function(err, result){
 						conn.release();
-						if(err) console.error(err);
-						else res.send(JSON.stringify(result));
+						if(err){
+							console.error(err);
+							res.send('{"error":"Database query error"}');
+						} else res.send(JSON.stringify(result));
 					});
 				}
 			});
+			else{
+				console.log("getprojs: MySQL pool not initialized");
+				res.send('{"error":"Could not access database"}');
+			}
+		}
+		else if(dat.action == "getemployees"){
+			//implement queries
+			if(req.session.user.admin){
+				if(pool) pool.getConnection(function(err, conn){
+					if(err){
+						console.error(err);
+						res.send('{"error":"Database connection error"}');
+					} else{
+						conn.query("SELECT uid,email,fname,lname,wage,days,picture FROM userdb",[],function(err, result){
+							conn.release();
+							if(err){
+								console.error(err);
+								res.send('{"error":"Database query error"}');
+							} else res.send(JSON.stringify(result));
+						});
+					}
+				});
+				else{
+					console.log("getemployees: MySQL pool not be initialized");
+					res.send('{"error":"Could not access database"}');
+				}
+			} else{
+				console.log("getemployees: Unauthorized access by ", req.session.user.fname, req.session.user.lname);
+				res.end("Unauthorized access to API call 'getusers'");
+			}
 		}
 		//getrfidevents (only for admins)
 		else res.end("Unknown API Action");

@@ -39,7 +39,8 @@
 <script id="template" type="text/ractive">
 	<nav>
 		<img id="logo" src="/images/logo.png">
-		<a href="/account/user.html"><img id="profilepic" src="/userpics/{{ppic}}"></a>
+		<a href="/account/user.html"><img id="profilepic" src="/userpics/{{ppic}}"></a><br>
+		{{#if isAdmin}}<a href="/users.html">Manage Employees</a>{{/if}}
 	</nav>
 	
 	<div style="text-align: center">
@@ -136,6 +137,7 @@
 		target: '#body',
 		template: '#template',
 		data: {
+			isAdmin: false,
 			ppic: "user.png",
 			clocked: false,
 			clockintime: "09:30",
@@ -241,6 +243,7 @@
 		else{
 			userdict = JSON.parse(http.responseText);
 			ractive.set("ppic", userdict.picture);
+			ractive.set("isAdmin", userdict.admin);
 			console.log(userdict);
 		}
 	});
