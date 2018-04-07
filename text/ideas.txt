@@ -13,3 +13,5 @@ in manager page, show cards of each person with picture, and hours, clicking wil
 alert admins of people who just walked in
 
 give flexible query capabilities for admins
+
+qr codes on the id cards for quick scan

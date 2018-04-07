@@ -1,5 +1,4 @@
 2018-02-12
-2018-02-12
 
 proposal
 project
@@ -141,3 +140,18 @@ https://stackoverflow.com/questions/19308071/struct-and-arduino
 http://forum.arduino.cc/index.php?topic=42681.0
 
 https://stackoverflow.com/questions/1129216/sort-array-of-objects-by-string-property-value-in-javascript
+
+--------------------------------
+
+2018-04-02
+
+weekly goal was met, firmware is done, tests for designing case have started, worked on interface a bit
+
+new goal: work on the interface, get far in designing the case
+
+https://www.3dhubs.com/knowledge-base/enclosure-design-3d-printing-step-step-guide
+
+http://goinkscape.com/how-to-vectorize-in-inkscape/
+https://forum.freecadweb.org/viewtopic.php?t=12761
+https://www.youtube.com/watch?v=ZblWD_hmp0U
+
