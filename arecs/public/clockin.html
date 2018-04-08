@@ -16,7 +16,6 @@
 				height: 100px;
 				text-align: center;
 				display: inline-block;
-				//background-color: #AAA;
 			}
 			.cltext {
 				font-weight: bold;
@@ -42,6 +41,11 @@
 		<a href="/account/user.html"><img id="profilepic" src="/userpics/{{ppic}}"></a><br>
 		{{#if isAdmin}}<a href="/users.html">Manage Employees</a>{{/if}}
 	</nav>
+	
+	<div on-click="closemodal" style="display: {{modla}}">
+		<div class="modal"></div>
+		<img src="images/loading.gif" class="loading">
+	</div>
 	
 	<div style="text-align: center">
 		{{#if .clocked}}
@@ -105,7 +109,10 @@
 			</tr>{{else}}<tr><td>No work yet</td></tr>{{/each}}
 		</table><br>
 		
-		{{#if .editing}}<button on-click="doneedit">Save Changes</button>{{/if}}
+		{{#if .editing}}
+		<button on-click="canceledit">Cancel</button>
+		<button on-click="doneedit">Save Changes</button>
+		{{/if}}
 		
 		{{else}}
 		<br><br><br><br><br><br>
@@ -123,6 +130,8 @@
 
 <script>
 	var userdict = {};
+	var ractive = null;
+	var did = 0;
 	
 	function gettime(dt){
 		if(dt == undefined) dt = new Date();
@@ -132,17 +141,37 @@
 		if(dt.getHours() < 10) st = "0" + st;
 		return st;
 	}
+	function pushedit(){
+		if(ractive.get("currentedit") != null){
+			var wdict = ractive.get("currentedit");
+			ractive.set("modla", "");
+			var ind = ractive.get("today").findIndex(function(itm){ return itm.wid == wdict.wid; });
+			ractive.set("today["+ind+"]."+wdict.edit, undefined);
+			var entry = {
+				wid: wdict.wid,
+				tag: wdict.tag,
+				value: ractive.get("today["+ind+"]."+wdict.tag)
+			};
+			httpRequest("POST","/api?action=editworks","entry="+encodeURIComponent(JSON.stringify(entry)),function(http){
+				console.log("OUTPUT:",http.responseText);
+				ractive.set("currentedit", null);
+				ractive.set("modla","none");
+			});
+			console.log("Pushing to server", entry);
+		}
+	}
 	
-	var ractive = new Ractive({
+	ractive = new Ractive({
 		target: '#body',
 		template: '#template',
 		data: {
+			modla: "",
 			isAdmin: false,
 			ppic: "user.png",
 			clocked: false,
-			clockintime: "09:30",
-			estimhours: 8.23,
-			leavetime: "17:30",
+			clockintime: "09:00",
+			estimhours: 8,
+			leavetime: "17:00",
 			clockouttime: "",
 			totaltime: 0,
 			editing: false,
@@ -150,26 +179,34 @@
 			tmpend: gettime(),
 			tmpdesc: "",
 			selproj: 0,
-			today: [
-				{wid: 1, pid: 2, tstart: "09:30", tend: "14:10", description: "Worked on stuff"},
-				{wid: 2, pid: 0, tstart: "14:10", tend: "17:30", description: "Worked on more stuff"}
-			],
+			today: [], //{wid: 1, pid: 1, tstart: "", tend: "", description: ""}
 			projs: [{pid: 0, title: "None"}],
-			projs2: {0: ""}
+			projs2: {0: ""},
+			currentedit: null //{wid: 1, tag: "tstart", edit: "estart"}
 		},
 		oninit: function(){
 			this.on("clockin", function(event){
-				this.set("clocked", true);
+				this.set("modla","");
+				var ract = this;
 				var dt = new Date();
 				dt.setSeconds(0);
+				var dat = dt.getFullYear() + "-";
+				dat += (dt.getMonth()<9?"0":"") + (dt.getMonth()+1) + "-";
+				dat += (dt.getDate()<=9?"0":"") + dt.getDate();
 				this.set("clockintime", gettime(dt));
 				dt.setTime(dt.getTime() + this.get("estimhours")*3600*1000);
 				this.set("leavetime", gettime(dt));
-				//send message to database to clock in
-				console.log("User clocked in at", this.get("clockintime"));
+				var entry = {date: dat, time: this.get("clockintime")};
+				httpRequest("POST","/api?action=addclocks","entry="+encodeURIComponent(JSON.stringify(entry)),function(http){
+					console.log("OUTPUT:", http.responseText);
+					ract.set("clocked", true);
+					ract.set("modla","none");
+				});
+				console.log("User clocked in at", entry);
 			});
 			this.on("clockout", function(event){
-				this.set("clocked", false);
+				this.set("modla","");
+				var ract = this;
 				var dt = new Date();
 				dt.setSeconds(0);
 				this.set("clockouttime", gettime(dt));
@@ -179,21 +216,37 @@
 				du.setMinutes(dv[1]);
 				du.setSeconds(0);
 				this.set("totaltime", (dt - du) / 3600000);
-				//send message to database to clock out
-				console.log("User clocked out at", this.get("clockouttime"));
+				var entry = {did: did, tag: "tend", value: gettime(dt)};
+				httpRequest("POST","/api?action=editclocks","entry="+encodeURIComponent(JSON.stringify(entry)),function(http){
+					console.log("OUTPUT:", http.responseText);
+					ract.set("clocked",false);
+					ract.set("modla","none");
+				});
+				console.log("User clocked out at", entry);
+			});
+			this.on("closemodal", function(event){
+				this.set("modla", "none");
 			});
 			
 			this.on("description", function(event){
 				if(this.get("tmpdesc").trim() != ""){
+					this.set("modla","");
+					var ract = this;
 					var entry = {
+						did: did,
 						pid: this.get("selproj"),
 						tstart: this.get("tmpstart"),
 						tend: this.get("tmpend"),
 						description: this.get("tmpdesc")
 					};
-					this.push("today", entry);
-					//send this to server
-					console.log("Use added new entry", entry);
+					httpRequest("POST","/api?action=addworks","entry="+encodeURIComponent(JSON.stringify(entry)),function(http){
+						var outp = JSON.parse(http.responseText);
+						console.log("OUTPUT:",outp);
+						entry.wid = outp.insertId;
+						ract.push("today", entry);
+						ract.set("modla","none");
+					});
+					console.log("User added new entry", entry);
 					this.set({
 						tmpstart: gettime(),
 						tmpend: gettime(),
@@ -205,39 +258,58 @@
 				this.set(event.node.id, gettime());
 			});
 			
-			this.on("editwork", function(event){
-				this.set("editing", true);
-				event.set("edesc", true);
-			});
-			this.on("editprj", function(event){
-				this.set("editing", true);
-				event.set("eprj", true);
-			});
 			this.on("editstart", function(event){
-				this.set("editing", true);
-				event.set("estart", true);
+				if(!event.get("estart")){
+					pushedit();
+					this.set("editing", true);
+					event.set("estart", true);
+					this.set("currentedit", {org: event.get("tstart"),
+						wid: event.get("wid"), tag: "tstart", edit: "estart"});
+				}
 			});
 			this.on("editend", function(event){
-				this.set("editing", true);
-				event.set("eend", true);
+				if(!event.get("eend")){
+					pushedit();
+					this.set("editing", true);
+					event.set("eend", true);
+					this.set("currentedit", {org: event.get("tend"),
+						wid: event.get("wid"), tag: "tend", edit: "eend"});
+				}
+			});
+			this.on("editprj", function(event){
+				if(!event.get("eprj")){
+					pushedit();
+					this.set("editing", true);
+					event.set("eprj", true);
+					this.set("currentedit", {org: event.get("pid"),
+						wid: event.get("wid"), tag: "pid", edit: "eprj"});
+				}
+			});
+			this.on("editwork", function(event){
+				if(!event.get("edesc")){
+					pushedit();
+					this.set("editing", true);
+					event.set("edesc", true);
+					this.set("currentedit", {org: event.get("description"),
+						wid: event.get("wid"), tag: "description", edit: "edesc"});
+				}
 			});
 			this.on("doneedit", function(event){
 				this.set("editing", false);
-				var works = this.get("today");
-				works = works.map(function(itm){
-					delete itm.edesc;
-					delete itm.eprj;
-					delete itm.estart;
-					delete itm.eend;
-					return itm;
-				});
-				this.set("today", works);
-				//send this to the server for correction
-				console.log("Update these", works);
+				pushedit();
+			});
+			this.on("canceledit", function(event){
+				var cured = this.get("currentedit");
+				var ind = this.get("today").findIndex(function(itm){ return itm.wid == cured.wid });
+				this.set("today["+ind+"]."+cured.edit, undefined);
+				this.set("today["+ind+"]."+cured.tag, cured.org);
+				this.set("currentedit", null);
+				this.set("editing", false);
 			});
 		},
 	});
 	
+	var lock1 = false;
 	httpRequest("POST","/account","action=getuser",function(http){
 		if(http.responseText == "") document.location = "/account";
 		else{
@@ -246,8 +318,10 @@
 			ractive.set("isAdmin", userdict.admin);
 			console.log(userdict);
 		}
+		lock1 = true;
 	});
 	
+	var lock2 = false;
 	httpRequest("GET","/api?action=getprojs&nodesc","",function(http){
 		if(http.responseText != ""){
 			var pjs = JSON.parse(http.responseText);
@@ -258,5 +332,47 @@
 			pjs2[0] = "";
 			ractive.set("projs2", pjs2);
 		}
+		lock2 = true;
 	});
+	
+	var lock3 = false;
+	var lock4 = false;
+	httpRequest("GET","/api?action=getclocks","",function(http){
+		if(http.responseText != ""){
+			var ans = JSON.parse(http.responseText);
+			console.log("Clock:", ans);
+			if(ans.length > 0){
+				ans = ans[0];
+				did = ans.did;
+				ractive.set("clocked", true);
+				var t = ans.tstart.split(":").slice(0,2)
+				ractive.set("clockintime", t.join(":"));
+				t[1] = 1*t[1] + ractive.get("estimhours")*60;
+				t[0] = 1*t[0] + Math.floor(t[1]/60);
+				t[1] = t[1] % 60;
+				ractive.set("leavetime", t.join(":"));
+			}
+		}
+		httpRequest("GET","/api?action=getworks&entry=%7B%22did%22%3A"+did+"%7D","",function(http){
+			if(http.responseText != ""){
+				var ans = JSON.parse(http.responseText);
+				ans = ans.map(function(itm){
+					itm.tstart = itm.tstart.split(":").slice(0,2).join(":");
+					itm.tend = itm.tend.split(":").slice(0,2).join(":");
+					return itm;
+				});
+				console.log("Works:", ans);
+				ractive.set("today", ans);
+			}
+			lock4 = true;
+		});
+		lock3 = true;
+	});
+	
+	var modalIntv = setInterval(function(){
+		if(lock1 && lock2 && lock3 && lock4){
+			ractive.set("modla", "none");
+			clearInterval(modalIntv);
+		}
+	}, 250);
 </script>

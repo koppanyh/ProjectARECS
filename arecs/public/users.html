@@ -98,8 +98,8 @@
 				ractive.set("employees[0].lname", "Error");
 			} else{
 				employees.sort(function(a,b){
-					a = a.fname + " " + a.lname;
-					b = b.fname + " " + b.lname;
+					a = a.lname + " " + a.fname;
+					b = b.lname + " " + b.fname;
 					if(a < b) return -1;
 					if(a > b) return 1;
 					return 0;

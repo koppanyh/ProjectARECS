@@ -41,23 +41,43 @@ process.on("SIGINT", function(){
 	setTimeout(function(){ process.exit(); }, 3000);
 });
 
-//fs.readFile("session.key", function(err, data){
-	app.use(session({
-		cookieName: "session",
-		secret: "magicTestKey",
-		duration: 7*24*60*60*1000, //7 days
-		activeDuration: 5*24*60*60*1000, //5 days
-		httpOnly: true
-	}));
-//});
+app.use(session({
+	cookieName: "session",
+	secret: "magicTestKey",
+	duration: 7*24*60*60*1000, //7 days
+	activeDuration: 5*24*60*60*1000, //5 days
+	httpOnly: true
+}));
 
 app.get('/', function(req, res){
 	if(isLoggedIn(req)) res.redirect("/clockin.html");
 	else res.redirect("/account");
 });
 
-///////////////////////////////// account stuff /////////////////////////////
+///////////////////////////////// helper funcs //////////////////////////////
 function isLoggedIn(req){ return req.session && req.session.user; }
+function mysqlquery(query,params,func,name,err1,err2,err3){
+	if(pool) pool.getConnection(function(err, conn){
+		if(err){
+			console.error((name?name+": ":"")+err);
+			if(err1) err1({"error":(name?name+": ":"")+"Database connection error"});
+		} else{
+			conn.query(query,params,function(err, result){
+				conn.release();
+				if(err){
+					console.error((name?name+": ":"")+err);
+					if(err2) err2({"error":(name?name+": ":"")+"Database query error"});
+				} else func(result);
+			});
+		}
+	});
+	else{
+		console.log((name?name+": ":"")+"MySQL pool not initialized");
+		if(err3) err3({"error":(name?name+": ":"")+"MySQL pool not initialized"});
+	}
+}
+
+///////////////////////////////// account stuff /////////////////////////////
 app.post('/account', urlencodedParser, function(req, res){
 	if(req.body.action == "login"){
 		if(pool) pool.getConnection(function(err, conn){
@@ -74,7 +94,6 @@ app.post('/account', urlencodedParser, function(req, res){
 						if(hash.digest("hex") == result.hashpw){
 							delete result.salt;
 							delete result.hashpw;
-							delete result.uid;
 							result.days = JSON.parse(result.days);
 							req.session.user = result;
 							res.redirect('/clockin.html');
@@ -132,17 +151,142 @@ function apiFunc(req, res){
 	}
 	else if(!isLoggedIn(req)) res.end("Must be logged in to use API");
 	else{
-		if(dat.action == "getprojs"){
-			var query = "SELECT ";
-			if("nodesc" in dat) query += "pid,title,active";
-			else query += "*";
-			query += " FROM projdb";
-			if("active" in dat) query += " WHERE active=1";
+		if(dat.action == "getclocks"){
 			if(pool) pool.getConnection(function(err, conn){
 				if(err){
 					console.error(err);
 					res.send('{"error":"Database connection error"}');
 				} else{
+					var query = "SELECT * FROM daydb WHERE uid=? AND day=?";
+					query += " AND tend IS NULL"; //make this conditional
+					conn.query(query,[req.session.user.uid,"2018-04-07"],function(err, result){
+						conn.release();
+						if(err){
+							console.error(err);
+							res.send('{"error":"Database query error"}');
+						} else res.send(JSON.stringify(result));
+					});
+				}
+			});
+			else{
+				console.log("getclocks: MySQL pool not initialized");
+				res.send('{"error":"Could not access database"}');
+			}
+		}
+		else if(dat.action == "addclocks"){
+			if(pool) pool.getConnection(function(err, conn){
+				if(err){
+					console.error(err);
+					res.send('{"error":"Database connection error"}');
+				} else{
+					var query = "INSERT INTO daydb (uid, day, tstart) VALUES (?,?,?)";
+					var entry = JSON.parse(dat.entry)
+					conn.query(query,[req.session.user.uid,entry.date,entry.time],function(err, result){
+						conn.release();
+						if(err){
+							console.error(err);
+							res.send('{"error":"Database query error"}');
+						} else{
+							pool.getConnection(function(err, conn){
+								if(err){
+									console.error(err);
+									res.send('{"error":"Database connection error"}');
+								} else{
+									conn.query("SELECT * FROM daydb WHERE did=?",[result.insertId],function(err, result){
+										conn.release();
+										if(err){
+											console.error(err);
+											res.send('{"error":"Database query error"}');
+										} else res.send(JSON.stringify(result));
+									});
+								}
+							});
+						}
+					});
+				}
+			});
+			else{
+				console.log("addclocks: MySQL pool not initialized");
+				res.send('{"error":"Could not access database"}');
+			}
+		}
+		else if(dat.action == "editclocks"){
+			var entry = JSON.parse(dat.entry);
+			if(["day","tstart","tend"].indexOf(entry.tag) >= 0){
+				var query = "UPDATE daydb SET "+entry.tag+"=? WHERE did=? AND uid=?";
+				var errfunc = function(inp){ res.send(JSON.stringify(inp)); };
+				mysqlquery(query,[entry.value,entry.did,req.session.user.uid],function(result){
+					res.send(JSON.stringify(result));
+				},"editclocks",errfunc,errfunc,errfunc);
+				//update hours automatically on tstart or tend
+			} else res.send("Incorrect column value: " + entry.tag);
+		}
+		else if(dat.action == "getworks"){
+			var entry = JSON.parse(dat.entry);
+			var query = "SELECT * FROM workdb WHERE uid=? AND did=?";
+			var errfunc = function(inp){ res.send(JSON.stringify(inp)); };
+			mysqlquery(query,[req.session.user.uid, entry.did],function(result){
+				res.send(JSON.stringify(result));
+			},"getworks",errfunc,errfunc,errfunc);
+		}
+		else if(dat.action == "addworks"){
+			if(pool) pool.getConnection(function(err, conn){
+				if(err){
+					console.error(err);
+					res.send('{"error":"Database connection error"}');
+				} else{
+					var query = "INSERT INTO workdb (uid, did, pid, description, tstart, tend) VALUES (?,?,?,?,?,?)";
+					var entry = JSON.parse(dat.entry);
+					conn.query(query,[req.session.user.uid, entry.did, entry.pid,
+						entry.description, entry.tstart, entry.tend],function(err, result){
+						conn.release();
+						if(err){
+							console.error(err);
+							res.send('{"error":"Database query error"}');
+						} else res.send(JSON.stringify(result));
+					});
+				}
+			});
+			else{
+				console.log("addworks: MySQL pool not initialized");
+				res.send('{"error":"Could not access database"}');
+			}
+		}
+		else if(dat.action == "editworks"){
+			if(pool) pool.getConnection(function(err, conn){
+				if(err){
+					console.error(err);
+					res.send('{"error":"Database connection error"}');
+				} else{
+					var entry = JSON.parse(dat.entry);
+					if(["tstart","tend","pid","description"].indexOf(entry.tag) >= 0){
+						var query = "UPDATE workdb SET "+entry.tag+"=? WHERE wid=? AND uid=?";
+						conn.query(query,[entry.value,entry.wid,req.session.user.uid],function(err, result){
+							conn.release();
+							if(err){
+								console.error(err);
+								res.send('{"error":"Database query error"}');
+							} else res.send(JSON.stringify(result));
+						});
+					} else res.send("Incorrect column value: " + entry.tag);
+				}
+			});
+			else{
+				console.log("editworks: MySQL pool not initialized");
+				res.send('{"error":"Could not access database"}');
+			}
+		}
+		else if(dat.action == "getprojs"){
+			if(pool) pool.getConnection(function(err, conn){
+				if(err){
+					console.error(err);
+					res.send('{"error":"Database connection error"}');
+				} else{
+					var query = "SELECT ";
+					if("nodesc" in dat) query += "pid,title,active";
+					else query += "*";
+					query += " FROM projdb";
+					if("active" in dat) query += " WHERE active=1";
 					conn.query(query,[],function(err, result){
 						conn.release();
 						if(err){

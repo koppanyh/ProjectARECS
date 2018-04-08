@@ -155,3 +155,10 @@ http://goinkscape.com/how-to-vectorize-in-inkscape/
 https://forum.freecadweb.org/viewtopic.php?t=12761
 https://www.youtube.com/watch?v=ZblWD_hmp0U
 
+https://github.com/ractivejs/ractive/issues/1649
+https://stackoverflow.com/questions/4708708/mysql-order-by-limit
+https://stackoverflow.com/questions/3536670/mysql-selecting-rows-where-a-column-is-null
+https://www.w3schools.com/jsref/jsref_slice_array.asp
+https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/encodeURIComponent
+http://makitweb.com/check-value-exists-array-jquery-javascript/
+
