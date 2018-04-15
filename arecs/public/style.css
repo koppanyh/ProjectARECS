@@ -22,9 +22,14 @@ button {
 table {
 	border: 1px solid black;
 	border-collapse: collapse;
+	display: inline-table;
+	width: 90%;
 }
 tr:nth-child(even) td {
 	background-color: #DDD;
+}
+td {
+	min-width: 4em;
 }
 .modal {
 	position: fixed;
@@ -41,4 +46,7 @@ tr:nth-child(even) td {
 	top: 40%;
 	width: 25%;
 	min-width: 212px;
+}
+.editable {
+	cursor: url('/images/pencil-32.png') 3 29, auto;
 }

@@ -80,6 +80,17 @@ const char index_html2[] PROGMEM =
   "    <input type=\"password\" name=\"pass\"><br>\n"
   "    Confirm WiFi Password<br>\n"
   "    <input type=\"password\" name=\"ssap\"><br><br>\n"
+  /*"    TCP/IP Settings<br>\n"
+  "    Static IP<br>\n"
+  "    <input type=\"text\" name=\"ip\"><br>\n"
+  "    Gateway<br>\n"
+  "    <input type=\"text\" name=\"gateway\" value=\"192.168.1.1\"><br>\n"
+  "    Subnet Mask<br>\n"
+  "    <input type=\"text\" name=\"subnet\" value=\"255.255.255.0\"><br>\n"
+  "    Primary DNS<br>\n"
+  "    <input type=\"text\" name=\"primary\" value=\"8.8.8.8\"><br>\n"
+  "    Secondary DNS<br>\n"
+  "    <input type=\"text\" name=\"secondary\" value=\"8.8.4.4\"><br><br>\n"*/
   "    Service Address<br>\n"
   "    <input type=\"text\" name=\"serv\"><br>\n"
   "    Service Port<br>\n"
@@ -225,6 +236,26 @@ void setup() {
             Serial.println("Passwords not matching");
             failure = true;
           }
+        }
+      }
+
+      //apply dhcp settings
+      if(request->hasParam("ip",true) && request->hasParam("gateway",true) && request->hasParam("subnet",true)
+        && request->hasParam("primary",true) && request->hasParam("secondary",true)){
+        AsyncWebParameter* u = request->getParam("ip", true);
+        if(u->value() != ""){
+          AsyncWebParameter* v = request->getParam("gateway", true);
+          AsyncWebParameter* w = request->getParam("subnet", true);
+          AsyncWebParameter* x = request->getParam("primary", true);
+          AsyncWebParameter* y = request->getParam("secondary", true);
+          configs.putString("ip", u->value());
+          configs.putString("gateway", v->value());
+          configs.putString("subnet", w->value());
+          configs.putString("primary", x->value());
+          configs.putString("secondary", y->value());
+        } else{
+          configs.putString("ip", "");
+          Serial.println("Skip DHCP Settings");
         }
       }
 
@@ -412,7 +443,7 @@ bool sendrfid(RFIDEvent card){
     client.print(card.id); //"00112233445566778899"
     //node=001122334455&time=001522108861&id=00112233445566778899
 
-    //check if the server agrees, wait 30 seconds
+    //check if the server agrees, wait up to 30 seconds
     for(int i=0; i<300; i++){
       if(!client.connected()) break;
       if(client.available()){
@@ -493,6 +524,8 @@ bool connectWifi(){
   Serial.print(ssid);
   digitalWrite(statLed, HIGH);
   int count = 0;
+  //WiFi.config();
+  //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   WiFi.begin(ssid.c_str(), pass.c_str());
   while(WiFi.status() != WL_CONNECTED){
     digitalWrite(statLed, LOW);

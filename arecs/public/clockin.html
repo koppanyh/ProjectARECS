@@ -22,10 +22,6 @@
 				margin-top: 40px;
 				display: block;
 			}
-			table {
-				display: inline-table;
-				width: 90%;
-			}
 			input {
 				width: 100%;
 				box-sizing: border-box;
@@ -39,13 +35,9 @@
 	<nav>
 		<img id="logo" src="/images/logo.png">
 		<a href="/account/user.html"><img id="profilepic" src="/userpics/{{ppic}}"></a><br>
-		{{#if isAdmin}}<a href="/users.html">Manage Employees</a>{{/if}}
+		{{#if isAdmin}}<a href="/users.html">Manage Employees</a>
+		&nbsp;&nbsp;<a href="">Settings</a>{{/if}}
 	</nav>
-	
-	<div on-click="closemodal" style="display: {{modla}}">
-		<div class="modal"></div>
-		<img src="images/loading.gif" class="loading">
-	</div>
 	
 	<div style="text-align: center">
 		{{#if .clocked}}
@@ -88,21 +80,21 @@
 				<th>Descrption</th>
 			</tr>{{/if}}
 			{{#each .today}}<tr>
-				<td on-click="editstart" style="min-width: 4em">
+				<td on-click="editstart" style="min-width: 4em" class="editable">
 					{{#if .estart}}<input type="time" value="{{.tstart}}">
 					{{else}}{{.tstart}}{{/if}}
 				</td>
-				<td on-click="editend" style="min-width: 4em">
+				<td on-click="editend" style="min-width: 4em" class="editable">
 					{{#if .eend}}<input type="time" value="{{.tend}}">
 					{{else}}{{.tend}}{{/if}}
 				</td>
-				<td on-click="editprj" style="min-width: 6em">
+				<td on-click="editprj" style="min-width: 6em" class="editable">
 					{{#if .eprj}}<select value="{{.pid}}" style="width: 100%">
-						{{#each projs}}<option value={{.pid}}>{{.title}}</option>{{/each}}
+						{{#each projs}}{{#if .active}}<option value={{.pid}}>{{.title}}</option>{{/if}}{{/each}}
 					</select>
 					{{else}}{{projs2[.pid]}}{{/if}}
 				</td>
-				<td on-click="editwork" style="width: 100%">
+				<td on-click="editwork" style="width: 100%" class="editable">
 					{{#if .edesc}}<input type="text" value="{{.description}}">
 					{{else}}{{.description}}{{/if}}
 				</td>
@@ -126,6 +118,11 @@
 		{{/if}}
 		{{/if}}
 	</div><br><br>
+	
+	<div on-click="closemodal" style="display: {{modla}}">
+		<div class="modal"></div>
+		<img src="/images/loading.gif" class="loading">
+	</div>
 </script>
 
 <script>
@@ -133,28 +130,21 @@
 	var ractive = null;
 	var did = 0;
 	
-	function gettime(dt){
-		if(dt == undefined) dt = new Date();
-		var st = dt.getMinutes();
-		if(st < 10) st = "0"+st;
-		st = dt.getHours()+":"+st;
-		if(dt.getHours() < 10) st = "0" + st;
-		return st;
-	}
+	function EUC(inp){ return encodeURIComponent(inp); }
 	function pushedit(){
 		if(ractive.get("currentedit") != null){
-			var wdict = ractive.get("currentedit");
 			ractive.set("modla", "");
+			var wdict = ractive.get("currentedit");
+			ractive.set("currentedit", null);
 			var ind = ractive.get("today").findIndex(function(itm){ return itm.wid == wdict.wid; });
 			ractive.set("today["+ind+"]."+wdict.edit, undefined);
-			var entry = {
-				wid: wdict.wid,
-				tag: wdict.tag,
-				value: ractive.get("today["+ind+"]."+wdict.tag)
-			};
-			httpRequest("POST","/api?action=editworks","entry="+encodeURIComponent(JSON.stringify(entry)),function(http){
+			var entry = [
+				wdict.wid,
+				wdict.tag,
+				EUC(ractive.get("today["+ind+"]."+wdict.tag))
+			];
+			httpRequest("POST","/api?action=editworks","wid="+entry[0]+"&tag="+entry[1]+"&value="+entry[2],function(http){
 				console.log("OUTPUT:",http.responseText);
-				ractive.set("currentedit", null);
 				ractive.set("modla","none");
 			});
 			console.log("Pushing to server", entry);
@@ -190,19 +180,16 @@
 				var ract = this;
 				var dt = new Date();
 				dt.setSeconds(0);
-				var dat = dt.getFullYear() + "-";
-				dat += (dt.getMonth()<9?"0":"") + (dt.getMonth()+1) + "-";
-				dat += (dt.getDate()<=9?"0":"") + dt.getDate();
+				var dat = getdate(dt);
 				this.set("clockintime", gettime(dt));
 				dt.setTime(dt.getTime() + this.get("estimhours")*3600*1000);
 				this.set("leavetime", gettime(dt));
-				var entry = {date: dat, time: this.get("clockintime")};
-				httpRequest("POST","/api?action=addclocks","entry="+encodeURIComponent(JSON.stringify(entry)),function(http){
-					console.log("OUTPUT:", http.responseText);
+				httpRequest("POST","/api?action=addclocks","date="+dat+"&time="+EUC(this.get("clockintime")),function(http){
+					console.log("OUTPUT:", JSON.parse(http.responseText));
 					ract.set("clocked", true);
 					ract.set("modla","none");
 				});
-				console.log("User clocked in at", entry);
+				console.log("User clocked in at", dat, this.get("clockintime"));
 			});
 			this.on("clockout", function(event){
 				this.set("modla","");
@@ -216,16 +203,15 @@
 				du.setMinutes(dv[1]);
 				du.setSeconds(0);
 				this.set("totaltime", (dt - du) / 3600000);
-				var entry = {did: did, tag: "tend", value: gettime(dt)};
-				httpRequest("POST","/api?action=editclocks","entry="+encodeURIComponent(JSON.stringify(entry)),function(http){
-					console.log("OUTPUT:", http.responseText);
+				httpRequest("POST","/api?action=editclocks","did="+did+"&tag=tend&value="+EUC(gettime(dt)),function(http){
+					console.log("OUTPUT:", JSON.parse(http.responseText));
 					ract.set("clocked",false);
 					ract.set("modla","none");
 				});
-				console.log("User clocked out at", entry);
+				console.log("User clocked out at", did, gettime(dt));
 			});
 			this.on("closemodal", function(event){
-				this.set("modla", "none");
+				//this.set("modla", "none");
 			});
 			
 			this.on("description", function(event){
@@ -239,7 +225,9 @@
 						tend: this.get("tmpend"),
 						description: this.get("tmpdesc")
 					};
-					httpRequest("POST","/api?action=addworks","entry="+encodeURIComponent(JSON.stringify(entry)),function(http){
+					httpRequest("POST","/api?action=addworks","did="+entry.did+
+						"&pid="+entry.pid+"&tstart="+EUC(entry.tstart)+"&tend="+
+						EUC(entry.tend)+"&desc="+EUC(entry.description),function(http){
 						var outp = JSON.parse(http.responseText);
 						console.log("OUTPUT:",outp);
 						entry.wid = outp.insertId;
@@ -306,7 +294,7 @@
 				this.set("currentedit", null);
 				this.set("editing", false);
 			});
-		},
+		}
 	});
 	
 	var lock1 = false;
@@ -317,6 +305,9 @@
 			ractive.set("ppic", userdict.picture);
 			ractive.set("isAdmin", userdict.admin);
 			console.log(userdict);
+			var wkday = (new Date()).getDay();
+			if(userdict.days[wkday] == undefined) ractive.set("estimhours", 3.14);
+			else ractive.set("estimhours", userdict.days[wkday][0]);
 		}
 		lock1 = true;
 	});
@@ -337,7 +328,7 @@
 	
 	var lock3 = false;
 	var lock4 = false;
-	httpRequest("GET","/api?action=getclocks","",function(http){
+	httpRequest("GET","/api?action=getclocks&date="+getdate(),"",function(http){
 		if(http.responseText != ""){
 			var ans = JSON.parse(http.responseText);
 			console.log("Clock:", ans);
@@ -349,11 +340,11 @@
 				ractive.set("clockintime", t.join(":"));
 				t[1] = 1*t[1] + ractive.get("estimhours")*60;
 				t[0] = 1*t[0] + Math.floor(t[1]/60);
-				t[1] = t[1] % 60;
+				t[1] = Math.round(t[1] % 60);
 				ractive.set("leavetime", t.join(":"));
 			}
 		}
-		httpRequest("GET","/api?action=getworks&entry=%7B%22did%22%3A"+did+"%7D","",function(http){
+		httpRequest("GET","/api?action=getworks&did="+did,"",function(http){
 			if(http.responseText != ""){
 				var ans = JSON.parse(http.responseText);
 				ans = ans.map(function(itm){

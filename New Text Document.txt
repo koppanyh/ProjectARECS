@@ -162,3 +162,25 @@ https://www.w3schools.com/jsref/jsref_slice_array.asp
 https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/encodeURIComponent
 http://makitweb.com/check-value-exists-array-jquery-javascript/
 
+----------------------------------
+
+2018-04-09
+
+weekly goal was met, more or less finished clocking page, finished case and assembled node
+
+new goal: fix firmware to include opts for dns, gateway, netmask, work on interface
+
+monday: learned that config needs fields for dns, gateway, netmask
+
+https://github.com/espressif/arduino-esp32/blob/master/libraries/WiFi/examples/WiFiClientStaticIP/WiFiClientStaticIP.ino
+https://docs.amcharts.com/3/javascriptcharts/Title
+https://stackoverflow.com/questions/24272335/mysql-select-last-7-days
+
+https://css-tricks.com/using-css-cursors/
+https://www.iconfinder.com/icons/2639884/pencil_icon#size=32
+https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_User_Interface/Using_URL_values_for_the_cursor_property
+https://www.w3schools.com/howto/howto_css_image_overlay.asp
+
+https://www.w3resource.com/mysql/date-and-time-functions/mysql-week-function.php
+https://stackoverflow.com/questions/5070111/difference-in-minutes-from-two-time-fields-in-mysql
+https://www.amcharts.com/kbase/real-time-data/

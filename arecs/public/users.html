@@ -27,7 +27,8 @@
 	<nav>
 		<img id="logo" src="/images/logo.png">
 		<a href="/account/user.html"><img id="profilepic" src="/userpics/{{ppic}}"></a><br>
-		<a href="/">Home</a>
+		<a href="/">Home</a>&nbsp;&nbsp;
+		<a href="">New User</a>
 	</nav>
 	
 	<div on-click="closemodal" style="display: {{modla}}">
@@ -39,7 +40,7 @@
 		{{#each employees}}
 		<a href="/viewprofile.html?id={{uid}}"><div class="card">
 			<img src="/userpics/{{picture}}" style="height: 100px"><br>
-			{{fname}} {{lname}}<br>
+			{{lname}}, {{fname}}<br>
 			{{email}}<br>
 			<!--${{wage}}-->
 		</div></a>
@@ -62,7 +63,7 @@
 		},
 		oninit: function(){
 			this.on("closemodal", function(event){
-				this.set("modla", "none");
+				//this.set("modla", "none");
 			});
 			/*this.on("clockin", function(event){
 				this.set("clocked", true);

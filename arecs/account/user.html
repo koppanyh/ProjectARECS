@@ -29,6 +29,19 @@
 				padding: 10px;
 				box-sizing: border-box;
 			}
+			#chpic {
+				background-color: rgba(50,50,50,0.5);
+				opacity: 0;
+				position: absolute;
+				top: 0;
+				left: 0;
+				width: 100px;
+				height: 100px;
+				text-align: center;
+			}
+			#chpic:hover {
+				opacity: 1;
+			}
 		</style>
 	</head>
 	<body id="body"></body>
@@ -39,48 +52,166 @@
 		<img id="profilepic" src="/userpics/{{user.picture}}">
 		<img id="logo" src="/images/logo.png"><br>
 		<a href="/">Home</a>&nbsp;&nbsp;
+		{{#if user.admin}}<a href="/users.html">Manage Employees</a>&nbsp;&nbsp;
+		<a href="">Settings</a>&nbsp;&nbsp;{{/if}}
 		<a href="/account/logout">Log Out</a>
 	</nav>
 	
 	<div id="left">
-		<img src="/userpics/{{user.picture}}"><br>
-		<a href="">Change Picture</a>
+		<div style="position: relative">
+			<img src="/userpics/{{user.picture}}" width="100" height="100"><br>
+			<div id="chpic">
+				<a href="" style="color: white; background-color: black">Change Picture</a>
+			</div>
+		</div>
 	</div>
 	
 	<div id="right">
 		{{user.fname}} {{user.lname}}<br>
-		{{user.email}}<br>
+		{{user.email}}<br><br>
+		$1234<br>
 	</div>
 	<br style="clear: both">
 	
-	<div id="graph" style="width: 100%; height: 500px"></div>
+	<div id="graph" style="width: 100%; height: 500px"></div><br>
+	
+	<div style="text-align: center">
+		<b>This week's work:</b><br>
+		<table border="1">
+			{{#if .thisweek.length > 0}}<tr>
+				<th>Day</th>
+				<th>Start</th>
+				<th>End</th>
+				<th>Project</th>
+				<th>Descrption</th>
+			</tr>{{/if}}
+			{{#each .thisweek}}<tr>
+				<td style="min-width: 6em">{{.date}}</td>
+				<td>
+					{{#if .estart}}<input type="time" value="{{.tstart}}">
+					{{else}}{{.tstart}}{{/if}}
+				</td>
+				<td>
+					{{#if .eend}}<input type="time" value="{{.tend}}">
+					{{else}}{{.tend}}{{/if}}
+				</td>
+				<td style="min-width: 6em">
+					{{#if .eprj}}<select value="{{.pid}}" style="width: 100%">
+						{{#each projs}}<option value={{.pid}}>{{.title}}</option>{{/each}}
+					</select>
+					{{else}}{{projs2[.pid]}}{{/if}}
+				</td>
+				<td style="width: 100%">
+					{{#if .edesc}}<input type="text" value="{{.description}}">
+					{{else}}{{.description}}{{/if}}
+				</td>
+			</tr>{{else}}<tr><td>No work yet</td></tr>{{/each}}
+		</table><br><br>
+		
+		{{#if .editing}}
+		<button on-click="canceledit">Cancel</button>
+		<button on-click="doneedit">Save Changes</button>
+		{{/if}}
+		
+		<!--Past day hours and works with span selector, not editable-->
+		<b>Historical hours:</b><br>
+		<table border="1">
+			{{#if .historical.length > 0}}<tr>
+				<th>Day</th>
+				<th>Start</th>
+				<th>End</th>
+				<th>Project</th>
+				<th>Descrption</th>
+			</tr>{{/if}}
+			{{#each .historical}}<tr>
+				<td style="min-width: 6em">{{.date}}</td>
+				<td on-click="editstart" style="min-width: 4em" class="editable">
+					{{#if .estart}}<input type="time" value="{{.tstart}}">
+					{{else}}{{.tstart}}{{/if}}
+				</td>
+				<td on-click="editend" style="min-width: 4em" class="editable">
+					{{#if .eend}}<input type="time" value="{{.tend}}">
+					{{else}}{{.tend}}{{/if}}
+				</td>
+				<td on-click="editprj" style="min-width: 6em" class="editable">
+					{{#if .eprj}}<select value="{{.pid}}" style="width: 100%">
+						{{#each projs}}{{#if .active}}<option value={{.pid}}>{{.title}}</option>{{/if}}{{/each}}
+					</select>
+					{{else}}{{projs2[.pid]}}{{/if}}
+				</td>
+				<td on-click="editwork" style="width: 100%" class="editable">
+					{{#if .edesc}}<input type="text" value="{{.description}}">
+					{{else}}{{.description}}{{/if}}
+				</td>
+			</tr>{{else}}<tr><td>Search to populate table</td></tr>{{/each}}
+		</table><br><br>
+		
+		<!--Estimated times table, editable-->
+		<b>Estimated daily times:</b><br>
+		<table border="1">
+			<tr>
+				<th>Weekday</th>
+				<th>Avg. Start Time</th>
+				<th>Avg. End Time</th>
+				<th>Avg. Hours</th>
+			</tr>
+			{{#each .estimate}}<tr>
+				<td on-click="" style="min-width: 4em">{{.day}}</td>
+				<td on-click="" class="editable" style="min-width: 4em">{{.start}}</td>
+				<td on-click="" class="editable" style="min-width: 4em">{{.end}}</td>
+				<td on-click="" class="editable" style="min-width: 4em">{{.hours}}</td>
+			</tr>{{else}}Loading...{{/each}}
+		</table><br><br>
+	</div>
+	
+	<div on-click="closemodal" style="display: {{modla}}">
+		<div class="modal"></div>
+		<img src="/images/loading.gif" class="loading">
+	</div>
 </script>
 
 <script>
 	var userdict = {};
+	var did = null;
+	var days = [];
 	
 	var ractive = new Ractive({
 		target: '#body',
 		template: '#template',
 		data: {
+			modla: "",
 			user: {
 				picture: "user.png",
 				fname: "Loading",
 				lname: "Loading",
 				email: "Loading"
-			}
+			},
+			estimate: [
+				{day: "Sunday",    indx: 0, hours: 8, start: "09:00", end: "17:00"},
+				{day: "Monday",    indx: 1, hours: 8, start: "09:00", end: "17:00"},
+				{day: "Tuesday",   indx: 2, hours: 8, start: "09:00", end: "17:00"},
+				{day: "Wednesday", indx: 3, hours: 8, start: "09:00", end: "17:00"},
+				{day: "Thursday",  indx: 4, hours: 8, start: "09:00", end: "17:00"},
+				{day: "Friday",    indx: 5, hours: 8, start: "09:00", end: "17:00"},
+				{day: "Saturday",  indx: 6, hours: 8, start: "09:00", end: "17:00"}
+			]
+		},
+		oninit: function(){
+			this.on("closemodal", function(event){
+				//this.set("modla", "none");
+			});
 		}
 	});
 	
-	httpRequest("POST","/account","action=getuser",function(http){
-		if(http.responseText == "") document.location = "/account";
-		else{
-			userdict = JSON.parse(http.responseText);
-			ractive.set("user", userdict);
-			console.log(userdict);
-		}
-	});
-	
+	var colors = [
+		"Sunday",   "ffaaaa","880000",
+		"Monday",   "aaffaa","008800",
+		"Tuesday",  "aaaaff","000088",
+		"Wednesday","ffaaaa","880000",
+		"Thursday", "aaffaa","008800",
+		"Friday",   "aaaaff","000088",
+		"Saturday", "ffaaaa","880000"
+	];
 	var chart = AmCharts.makeChart( "graph", {
 		"type": "gantt",
 		"theme": "light",
@@ -90,12 +221,16 @@
 		"columnWidth": 0.5,
 		"valueAxis": { "type": "date" },
 		"brightnessStep": 3,
+		"titles": [{
+			"text": "This week's work",
+			"size": 15
+		}],
 		"graph": {
 			"fillAlphas": 1,
 			"lineAlpha": 1,
 			"lineColor": "#fff",
 			"fillAlphas": 0.85,
-			"balloonText": "<b>[[task]]</b>:<br />[[start]] - [[end]]"
+			"balloonText": "<b>[[task]]</b>:<br>[[start]] - [[end]]"
 		},
 		"rotate": true,
 		"categoryField": "day",
@@ -104,124 +239,13 @@
 		"startDateField": "start",
 		"endDateField": "end",
 		"dataProvider": [
-			{
-				"day": "Sunday",
-				"work": [
-					//#ffaaaa #880000
-				]
-			}, {
-				"day": "Monday",
-				"work": [
-					{
-						"start": "09:05",
-						"end": "17:05",
-						"color": "#aaffaa",
-						"task": "Monday"
-					}, {
-						"start": "09:06",
-						"end": "10:30",
-						"color": "#008800",
-						"task": "Talked with Rochelle"
-					}, {
-						"start": "10:40",
-						"end": "12:20",
-						"task": "DB Builder"
-					}, {
-						"start": "13:20",
-						"end": "17:04",
-						"task": "DB Builder"
-					}
-				]
-			}, {
-				"day": "Tuesday",
-				"work": [
-					{
-						"start": "08:53",
-						"end": "16:53",
-						"color": "#aaaaff",
-						"task": "Tuesday"
-					}, {
-						"start": "09:00",
-						"end": "12:11",
-						"color": "#000088",
-						"task": "DB Builder"
-					}, {
-						"start": "12:56",
-						"end": "16:50",
-						"task": "Ricky's bug"
-					}
-				]
-			}, {
-				"day": "Wednesday",
-				"work": [
-					{
-						"start": "09:30",
-						"end": "17:30",
-						"color": "#ffaaaa",
-						"task": "Wednesday"
-					}, {
-						"start": "10:00",
-						"end": "12:00",
-						"color": "#880000",
-						"task": "Producing specifications"
-					}, {
-						"start": "13:00",
-						"end": "17:20",
-						"task": "Development"
-					}
-				]
-			}, {
-				"day": "Thursday",
-				"work": [
-					{
-						"start": "09:10",
-						"end": "17:10",
-						"color": "#aaffaa",
-						"task": "Thursday"
-					}, {
-						"start": "09:13",
-						"end": "12:24",
-						"color": "#008800",
-						"task": "Party"
-					}, {
-						"start": "12:40",
-						"end": "15:12",
-						"task": "Siemens Meeting"
-					}, {
-						"start": "15:12",
-						"end": "17:10",
-						"task": "Ricky help"
-					}
-				]
-			}, {
-				"day": "Friday",
-				"work": [
-					{
-						"start": "09:40",
-						"end": "17:40",
-						"color": "#aaaaff",
-						"task": "Friday"
-					}, {
-						"start": "09:43",
-						"end": "10:20",
-						"color": "#000088",
-						"task": "Rochelle talking"
-					}, {
-						"start": "10:21",
-						"end": "12:11",
-						"task": "UI Demo"
-					}, {
-						"start": "13:09",
-						"end": "17:37",
-						"task": "Siemens Meeting"
-					}
-				]
-			}, {
-				"day": "Saturday",
-				"work": [
-					//#ffaaaa #880000
-				]
-			}
+			{"day": "Sunday", "work": []},
+			{"day": "Monday", "work": []},
+			{"day": "Tuesday", "work": []},
+			{"day": "Wednesday", "work": []},
+			{"day": "Thursday", "work": []},
+			{"day": "Friday", "work": []},
+			{"day": "Saturday", "work": []},
 		],
 		"valueScrollbar": { "autoGridCount": true },
 		"chartCursor": {
@@ -234,6 +258,122 @@
 			"zoomable": false,
 			"valueZoomable": true
 		},
-		"export": { "enabled": true }
+		//"export": { "enabled": true }
 	});
+	
+	var lock1 = false;
+	httpRequest("POST","/account","action=getuser",function(http){
+		if(http.responseText == "") document.location = "/account";
+		else{
+			userdict = JSON.parse(http.responseText);
+			ractive.set("user", userdict);
+			for(var i=0; i<7; i++){
+				if(userdict.days[i] != undefined){
+					ractive.set("estimate["+i+"].hours", userdict.days[i][0]);
+					ractive.set("estimate["+i+"].start", userdict.days[i][1]);
+					ractive.set("estimate["+i+"].end", addhours(userdict.days[i][1], userdict.days[i][0]));
+				}
+			}
+			console.log(userdict);
+		}
+		lock1 = true;
+	});
+	
+	var lock2 = false;
+	httpRequest("GET","/api?action=getprojs&nodesc","",function(http){
+		if(http.responseText != ""){
+			var pjs = JSON.parse(http.responseText);
+			pjs.unshift({pid: 0, title: "None", active: 1});
+			ractive.set("projs", pjs);
+			var pjs2 = {};
+			pjs.forEach(function(itm){ pjs2[itm.pid] = itm.title; });
+			pjs2[0] = "";
+			ractive.set("projs2", pjs2);
+		}
+		lock2 = true;
+	});
+	
+	var lock3 = false;
+	var lock4 = false;
+	httpRequest("GET","/api?action=getclocks&alsonull&week="+getdate(),"",function(http){
+		if(http.responseText != ""){
+			days = JSON.parse(http.responseText);
+			days = days.map(function(itm){
+				var t = new Date(itm.day);
+				itm.day = itm.day.split("T")[0];
+				itm.wkday = t.getDay();
+				return itm;
+			});
+			console.log("Clock:", days);
+			httpRequest("GET","/api?action=getworks&fromdid="+days[0].did+"&todid="+days[days.length-1].did,"",function(http){
+				if(http.responseText != ""){
+					var ans = JSON.parse(http.responseText)
+					ans = ans.map(function(itm){
+						var day = days.find(function(mti){ return mti.did == itm.did; })
+						itm.date = day.day;
+						itm.wkday = day.wkday;
+						itm.tstart = itm.tstart.split(":").slice(0,2).join(":");
+						itm.tend = itm.tend.split(":").slice(0,2).join(":");
+						return itm;
+					});
+					ractive.set("thisweek", ans);
+					console.log("Works:", ans);
+					
+					var dp = [];
+					for(var i=0; i<7; i++){
+						var dayname = colors.shift();
+						var backcol = colors.shift();
+						var forecol = colors.shift();
+						
+						var work = [];
+						
+						var dayfind = days.find(function(itm){ return itm.wkday == i; });
+						if(dayfind){
+							work.push({
+								"start": dayfind.tstart.split(":").slice(0,2).join(":"),
+								"end": (dayfind.tend ? dayfind.tend.split(":").slice(0,2).join(":") : gettime()),
+								"color": backcol,
+								"task": dayname
+							});
+							ans.forEach(function(itm){
+								if(itm.wkday == i) work.push({
+									"start": itm.tstart.split(":").slice(0,2).join(":"),
+									"end": itm.tend.split(":").slice(0,2).join(":"),
+									"color": forecol,
+									"task": itm.description
+								});
+							});
+						}
+						
+						dp.push({
+							"day": dayname,
+							"work": work
+						});
+					}
+					chart.dataProvider = dp;
+					chart.validateData();
+					console.log(dp);
+				}
+				lock4 = true;
+			});
+			if(days.length > 0){
+				did = days[0].did;
+				ractive.set("clocked", true);
+				var t = days[0].tstart.split(":").slice(0,2)
+				ractive.set("clockintime", t.join(":"));
+				t[1] = 1*t[1] + ractive.get("estimhours")*60;
+				t[0] = 1*t[0] + Math.floor(t[1]/60);
+				t[1] = Math.round(t[1] % 60);
+				ractive.set("leavetime", t.join(":"));
+			}
+		}
+		lock3 = true;
+	});
+	
+	var modalIntv = setInterval(function(){
+		if(lock1 && lock2 && lock3 && lock4){
+			ractive.set("modla", "none");
+			clearInterval(modalIntv);
+		}
+	}, 250);
 </script>
