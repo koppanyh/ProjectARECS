@@ -35,8 +35,7 @@
 	<nav>
 		<img id="logo" src="/images/logo.png">
 		<a href="/account/user.html"><img id="profilepic" src="/userpics/{{ppic}}"></a><br>
-		{{#if isAdmin}}<a href="/users.html">Manage Employees</a>
-		&nbsp;&nbsp;<a href="">Settings</a>{{/if}}
+		{{#if isAdmin}}<a href="/users.html">Manage Employees</a>{{/if}}
 	</nav>
 	
 	<div style="text-align: center">
@@ -336,12 +335,11 @@
 				ans = ans[0];
 				did = ans.did;
 				ractive.set("clocked", true);
-				var t = ans.tstart.split(":").slice(0,2)
-				ractive.set("clockintime", t.join(":"));
-				t[1] = 1*t[1] + ractive.get("estimhours")*60;
-				t[0] = 1*t[0] + Math.floor(t[1]/60);
-				t[1] = Math.round(t[1] % 60);
-				ractive.set("leavetime", t.join(":"));
+				var t = ans.tstart.split(":").slice(0,2).join(":");
+				ractive.set("clockintime", t);
+				if(ans.hours > 0) ractive.set("estimhours", ans.hours);
+				t = addhours(t, ractive.get("estimhours"));
+				ractive.set("leavetime", t);
 			}
 		}
 		httpRequest("GET","/api?action=getworks&did="+did,"",function(http){

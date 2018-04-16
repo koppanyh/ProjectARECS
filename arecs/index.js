@@ -110,7 +110,7 @@ app.get('/account', function(req, res){
 	if(isLoggedIn(req)) res.redirect("/account/user.html"); //if logged in then redir to user
 	else res.redirect("/account/login.html"); //else redir to login
 });
-app.get('/account/logout', function(req, res){
+app.get('/account/logout*', function(req, res){
 	req.session.reset();
 	res.redirect("/account/login.html");
 });
@@ -142,18 +142,34 @@ function apiFunc(req, res){
 	else if(!isLoggedIn(req)) res.end("Must be logged in to use API");
 	else{
 		if(dat.action == "getclocks"){
-			var errfunc = function(inp){ res.send(JSON.stringify(inp)); };
 			var query = "SELECT * FROM daydb WHERE uid=?";
-			var queryparms = [req.session.user.uid];
-			//query += " AND day > '2018-04-11' - INTERVAL 2 DAY";
+			var queryparms = [];
+			if("uid" in dat){
+				if(req.session.user.admin) queryparms.push(dat.uid);
+				else{
+					console.log("getclocks: Unauthorized access by ", req.session.user.fname, req.session.user.lname);
+					res.send('{"error":"Unauthorized access to API call getclocks, event will be logged"}');
+					return;
+				}
+			} else queryparms.push(req.session.user.uid);
 			if("date" in dat){
 				query +=  " AND day=?";
 				queryparms.push(dat.date);
 			} else if("week" in dat){
-				query += " AND WEEK(day) = WEEK(?)";
+				query += " AND WEEK(day)=WEEK(?)";
 				queryparms.push(dat.week);
+			} else{
+				if("fromday" in dat){
+					query += " AND day>=?";
+					queryparms.push(dat.fromday);
+				}
+				if("today" in dat){
+					query += " AND day<=?";
+					queryparms.push(dat.today);
+				}
 			}
-			if(!("alsonull" in dat)) query += " AND tend IS NULL";
+			if(!("notjustnull" in dat)) query += " AND tend IS NULL";
+			var errfunc = function(inp){ res.send(JSON.stringify(inp)); };
 			mysqlquery(query,queryparms,function(result){
 				res.send(JSON.stringify(result));
 			},"getclocks",errfunc,errfunc,errfunc);
@@ -166,9 +182,14 @@ function apiFunc(req, res){
 			},"addclocks",errfunc,errfunc,errfunc);
 		}
 		else if(dat.action == "editclocks"){
+			var errfunc = function(inp){ res.send(JSON.stringify(inp)); };
 			if(["day","tstart","tend"].indexOf(dat.tag) >= 0){
 				var query = "UPDATE daydb SET "+dat.tag+"=?, hours=TIME_TO_SEC(TIMEDIFF(tend,tstart))/3600 WHERE did=? AND uid=?";
-				var errfunc = function(inp){ res.send(JSON.stringify(inp)); };
+				mysqlquery(query,[dat.value,dat.did,req.session.user.uid],function(result){
+					res.send(JSON.stringify(result));
+				},"editclocks",errfunc,errfunc,errfunc);
+			} else if(dat.tag == "hours"){
+				var query = "UPDATE daydb SET hours=? WHERE did=? AND uid=?";
 				mysqlquery(query,[dat.value,dat.did,req.session.user.uid],function(result){
 					res.send(JSON.stringify(result));
 				},"editclocks",errfunc,errfunc,errfunc);
@@ -221,6 +242,53 @@ function apiFunc(req, res){
 			mysqlquery(query,[],function(result){
 				res.send(JSON.stringify(result));
 			},"getprojs",errfunc,errfunc,errfunc);
+		}
+		else if(dat.action == "gethours"){
+			var errfunc = function(inp){ res.send(JSON.stringify(inp)); }
+			var query = "day,hours FROM daydb";
+			var queryparms = [];
+			if("allemployees" in dat){
+				if(req.session.user.admin){
+					query = "SELECT uid," + query;
+					if("fromday" in dat || "today" in dat || "uid" in dat){
+						query += " WHERE";
+						var query2 = "";
+						if("fromday" in dat){
+							query2 += " AND day>=?";
+							queryparms.push(dat.fromday);
+						}
+						if("today" in dat){
+							query2 += " AND day<=?";
+							queryparms.push(dat.today);
+						}
+						if("uid" in dat){
+							query2 += " AND uid=?";
+							queryparms.push(dat.uid);
+						}
+						query += query2.substring(4);
+					}
+					mysqlquery(query,queryparms,function(result){
+						res.send(JSON.stringify(result));
+					},"gethours",errfunc,errfunc,errfunc);
+				} else{
+					console.log("gethours: Unauthorized access by ", req.session.user.fname, req.session.user.lname);
+					res.send('{"error":"Unauthorized access to API call gethours, event will be logged"}');
+				}
+			} else{
+				query = "SELECT " + query + " WHERE uid=?";
+				queryparms.push(req.session.user.uid);
+				if("fromday" in dat){
+					query += " AND day>=?";
+					queryparms.push(dat.fromday);
+				}
+				if("today" in dat){
+					query += " AND day<=?";
+					queryparms.push(dat.today);
+				}
+				mysqlquery(query,queryparms,function(result){
+					res.send(JSON.stringify(result));
+				},"gethours",errfunc,errfunc,errfunc);
+			}
 		}
 		else if(dat.action == "getemployees"){
 			//implement queries

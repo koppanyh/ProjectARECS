@@ -52,8 +52,7 @@
 		<img id="profilepic" src="/userpics/{{user.picture}}">
 		<img id="logo" src="/images/logo.png"><br>
 		<a href="/">Home</a>&nbsp;&nbsp;
-		{{#if user.admin}}<a href="/users.html">Manage Employees</a>&nbsp;&nbsp;
-		<a href="">Settings</a>&nbsp;&nbsp;{{/if}}
+		{{#if user.admin}}<a href="/users.html">Manage Employees</a>&nbsp;&nbsp;{{/if}}
 		<a href="/account/logout">Log Out</a>
 	</nav>
 	
@@ -69,7 +68,10 @@
 	<div id="right">
 		{{user.fname}} {{user.lname}}<br>
 		{{user.email}}<br><br>
-		$1234<br>
+		${{(user.wage * totalhours).toFixed(2)}} @ {{totalhours.toFixed(2)}} hours<br><br>
+		
+		{{#if edithours}}<input type="number" value="{{estimhours}}"><button on-click="edithours">Done</button>
+		{{else}}<span class="editable" on-click="edithours">Estimated hours for today: {{estimhours.toFixed(2)}}</span>{{/if}}
 	</div>
 	<br style="clear: both">
 	
@@ -143,7 +145,7 @@
 					{{#if .edesc}}<input type="text" value="{{.description}}">
 					{{else}}{{.description}}{{/if}}
 				</td>
-			</tr>{{else}}<tr><td>Search to populate table</td></tr>{{/each}}
+			</tr>{{else}}<tr><td>Search to populate table (Coming Soon)</td></tr>{{/each}}
 		</table><br><br>
 		
 		<!--Estimated times table, editable-->
@@ -184,7 +186,8 @@
 				picture: "user.png",
 				fname: "Loading",
 				lname: "Loading",
-				email: "Loading"
+				email: "Loading",
+				wage: 0
 			},
 			estimate: [
 				{day: "Sunday",    indx: 0, hours: 8, start: "09:00", end: "17:00"},
@@ -194,11 +197,41 @@
 				{day: "Thursday",  indx: 4, hours: 8, start: "09:00", end: "17:00"},
 				{day: "Friday",    indx: 5, hours: 8, start: "09:00", end: "17:00"},
 				{day: "Saturday",  indx: 6, hours: 8, start: "09:00", end: "17:00"}
-			]
+			],
+			totalhours: 0,
+			edithours: false,
+			estimhours: 0,
+			orgestimhours: 0,
 		},
 		oninit: function(){
 			this.on("closemodal", function(event){
 				//this.set("modla", "none");
+			});
+			this.on("edithours", function(event){
+				var isedit = ractive.get("edithours")
+				ractive.set("edithours", !isedit);
+				if(isedit){
+					ractive.set("modla","");
+					var num = event.get("estimhours");
+					var isvalid = !isNaN(1 * num);
+					if(isvalid){
+						if(num * 1 > 0){
+							httpRequest("GET","/api?action=editclocks&tag=hours&did="+did+"&value="+num,"",function(http){
+								http = JSON.parse(http.responseText);
+								ractive.set("modla","none");
+								console.log(http);
+							});
+							ractive.set("orgestimhours", ractive.get("estimhours"));
+						} else{
+							ractive.set("estimhours", ractive.get("orgestimhours"));
+							ractive.set("modla", "none");
+						}
+					} else{
+						ractive.set("estimhours", ractive.get("orgestimhours"));
+						ractive.set("modla", "none");
+					}
+					console.log("Update today's hours", isvalid, num);
+				}
 			});
 		}
 	});
@@ -274,6 +307,8 @@
 					ractive.set("estimate["+i+"].end", addhours(userdict.days[i][1], userdict.days[i][0]));
 				}
 			}
+			ractive.set("estimhours", ractive.get("estimate["+(new Date()).getDay()+"].hours"));
+			ractive.set("orgestimhours", ractive.get("estimhours"));
 			console.log(userdict);
 		}
 		lock1 = true;
@@ -295,7 +330,7 @@
 	
 	var lock3 = false;
 	var lock4 = false;
-	httpRequest("GET","/api?action=getclocks&alsonull&week="+getdate(),"",function(http){
+	httpRequest("GET","/api?action=getclocks&notjustnull&week="+getdate(),"",function(http){
 		if(http.responseText != ""){
 			days = JSON.parse(http.responseText);
 			days = days.map(function(itm){
@@ -305,73 +340,83 @@
 				return itm;
 			});
 			console.log("Clock:", days);
-			httpRequest("GET","/api?action=getworks&fromdid="+days[0].did+"&todid="+days[days.length-1].did,"",function(http){
-				if(http.responseText != ""){
-					var ans = JSON.parse(http.responseText)
-					ans = ans.map(function(itm){
-						var day = days.find(function(mti){ return mti.did == itm.did; })
-						itm.date = day.day;
-						itm.wkday = day.wkday;
-						itm.tstart = itm.tstart.split(":").slice(0,2).join(":");
-						itm.tend = itm.tend.split(":").slice(0,2).join(":");
-						return itm;
-					});
-					ractive.set("thisweek", ans);
-					console.log("Works:", ans);
+			if(days.length > 0){
+				httpRequest("GET","/api?action=getworks&fromdid="+days[0].did+"&todid="+days[days.length-1].did,"",function(http){
+					if(http.responseText != ""){
+						var ans = JSON.parse(http.responseText)
+						ans = ans.map(function(itm){
+							var day = days.find(function(mti){ return mti.did == itm.did; })
+							itm.date = day.day;
+							itm.wkday = day.wkday;
+							itm.tstart = itm.tstart.split(":").slice(0,2).join(":");
+							itm.tend = itm.tend.split(":").slice(0,2).join(":");
+							return itm;
+						});
+						ractive.set("thisweek", ans);
+						console.log("Works:", ans);
 					
-					var dp = [];
-					for(var i=0; i<7; i++){
-						var dayname = colors.shift();
-						var backcol = colors.shift();
-						var forecol = colors.shift();
+						var dp = [];
+						for(var i=0; i<7; i++){
+							var dayname = colors.shift();
+							var backcol = colors.shift();
+							var forecol = colors.shift();
 						
-						var work = [];
+							var work = [];
 						
-						var dayfind = days.find(function(itm){ return itm.wkday == i; });
-						if(dayfind){
-							work.push({
-								"start": dayfind.tstart.split(":").slice(0,2).join(":"),
-								"end": (dayfind.tend ? dayfind.tend.split(":").slice(0,2).join(":") : gettime()),
-								"color": backcol,
-								"task": dayname
-							});
-							ans.forEach(function(itm){
-								if(itm.wkday == i) work.push({
-									"start": itm.tstart.split(":").slice(0,2).join(":"),
-									"end": itm.tend.split(":").slice(0,2).join(":"),
-									"color": forecol,
-									"task": itm.description
+							var dayfind = days.find(function(itm){ return itm.wkday == i; });
+							if(dayfind){
+								work.push({
+									"start": dayfind.tstart.split(":").slice(0,2).join(":"),
+									"end": (dayfind.tend ? dayfind.tend.split(":").slice(0,2).join(":") : gettime()),
+									"color": backcol,
+									"task": dayname
 								});
+								ans.forEach(function(itm){
+									if(itm.wkday == i) work.push({
+										"start": itm.tstart.split(":").slice(0,2).join(":"),
+										"end": itm.tend.split(":").slice(0,2).join(":"),
+										"color": forecol,
+										"task": itm.description
+									});
+								});
+							}
+						
+							dp.push({
+								"day": dayname,
+								"work": work
 							});
 						}
-						
-						dp.push({
-							"day": dayname,
-							"work": work
-						});
+						chart.dataProvider = dp;
+						chart.validateData();
+						console.log(dp);
 					}
-					chart.dataProvider = dp;
-					chart.validateData();
-					console.log(dp);
+					lock4 = true;
+				});
+				
+				did = days[days.length-1].did;
+				if(days[days.length-1].hours > 0){
+					ractive.set("estimhours", days[days.length-1].hours);
+					ractive.set("orgestimhours", ractive.get("estimhours"));
 				}
-				lock4 = true;
-			});
-			if(days.length > 0){
-				did = days[0].did;
-				ractive.set("clocked", true);
-				var t = days[0].tstart.split(":").slice(0,2)
-				ractive.set("clockintime", t.join(":"));
-				t[1] = 1*t[1] + ractive.get("estimhours")*60;
-				t[0] = 1*t[0] + Math.floor(t[1]/60);
-				t[1] = Math.round(t[1] % 60);
-				ractive.set("leavetime", t.join(":"));
-			}
+			} else lock4 = true;
 		}
 		lock3 = true;
 	});
 	
+	var lock5 = false;
+	var lastweek = new Date();
+	lastweek.setTime(lastweek.getTime() - 14*24*3600*1000);
+	httpRequest("GET","/api?action=gethours&fromday="+getdate(lastweek),"",function(http){
+		http = JSON.parse(http.responseText);
+		var total = 0;
+		http.forEach(function(itm){ total += itm.hours; });
+		ractive.set("totalhours", total);
+		console.log("Hours: ", total, http);
+		lock5 = true;
+	});
+	
 	var modalIntv = setInterval(function(){
-		if(lock1 && lock2 && lock3 && lock4){
+		if(lock1 && lock2 && lock3 && lock4 && lock5){
 			ractive.set("modla", "none");
 			clearInterval(modalIntv);
 		}

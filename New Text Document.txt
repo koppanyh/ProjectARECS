@@ -184,3 +184,5 @@ https://www.w3schools.com/howto/howto_css_image_overlay.asp
 https://www.w3resource.com/mysql/date-and-time-functions/mysql-week-function.php
 https://stackoverflow.com/questions/5070111/difference-in-minutes-from-two-time-fields-in-mysql
 https://www.amcharts.com/kbase/real-time-data/
+
+https://stackoverflow.com/questions/17482554/change-autoindex-number-mysql

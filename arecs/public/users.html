@@ -31,25 +31,38 @@
 		<a href="">New User</a>
 	</nav>
 	
-	<div on-click="closemodal" style="display: {{modla}}">
-		<div class="modal"></div>
-		<img src="images/loading.gif" class="loading">
+	<div>
+		Pay Period: <input type="date" value="{{pstart}}"> to <input type="date" value="{{pend}}">
+		<button on-click="money">Update</button><br>
+		<button>Export Financial Data</button>
+	</div>
+	
+	<div>
+		Graph of employee work
 	</div>
 	
 	<div style="text-align: center">
+		<b>Employees</b><br>
 		{{#each employees}}
 		<a href="/viewprofile.html?id={{uid}}"><div class="card">
 			<img src="/userpics/{{picture}}" style="height: 100px"><br>
 			{{lname}}, {{fname}}<br>
 			{{email}}<br>
-			<!--${{wage}}-->
+			{{#if hours[uid]}}${{(wage * hours[uid]).toFixed(2)}}{{else}}$0{{/if}}
 		</div></a>
 		{{/each}}
 	</div><br><br>
+	
+	<div on-click="closemodal" style="display: {{modla}}">
+		<div class="modal"></div>
+		<img src="images/loading.gif" class="loading">
+	</div>
 </script>
 
 <script>
 	var userdict = {};
+	var lastweek = new Date();
+	lastweek.setTime(lastweek.getTime() - 14*24*3600*1000);
 	
 	var ractive = new Ractive({
 		target: '#body',
@@ -59,25 +72,34 @@
 			isAdmin: false,
 			ppic: "user.png",
 			employees: [{picture: "user.png", fname: "Loading",
-				lname: "Loading", email: "Loading", uid: 0, wage: "Loading"}]
+				lname: "Loading", email: "Loading", uid: 0, wage: "Loading"}],
+			hours: {}, //[uid]: 0
+			pstart: getdate(lastweek),
+			pend: getdate()
 		},
 		oninit: function(){
 			this.on("closemodal", function(event){
 				//this.set("modla", "none");
 			});
-			/*this.on("clockin", function(event){
-				this.set("clocked", true);
-				var dt = new Date();
-				dt.setSeconds(0);
-				this.set("clockintime", gettime(dt));
-				dt.setTime(dt.getTime() + this.get("estimhours")*3600*1000);
-				this.set("leavetime", gettime(dt));
-				//send message to database to clock in
-				console.log("User clocked in at", this.get("clockintime"));
-			});*/
+			this.on("money", function(event){
+				ractive.set("modla", "");
+				var req = "/api?action=gethours&allemployees&fromday="+event.get("pstart")+"&today="+event.get("pend");
+				httpRequest("GET",req,"",function(http){
+					var result = JSON.parse(http.responseText);
+					var hrs = {};
+					result.forEach(function(itm){
+						if(itm.uid in hrs) hrs[itm.uid] += itm.hours;
+						else hrs[itm.uid] = itm.hours;
+					});
+					ractive.set("hours", hrs);
+					ractive.set("modla", "none");
+					console.log("Hours", result, hrs);
+				});
+			});
 		},
 	});
 	
+	var lock1 = false;
 	httpRequest("POST","/account","action=getuser",function(http){
 		if(http.responseText == "") document.location = "/account";
 		else{
@@ -89,9 +111,11 @@
 				console.log(userdict);
 			}
 		}
+		lock1 = true;
 	});
 	
-	httpRequest("POST","/api","action=getemployees",function(http){
+	var lock2 = false;
+	httpRequest("GET","/api?action=getemployees","",function(http){
 		if(http.responseText != ""){
 			var employees = JSON.parse(http.responseText);
 			if(employees[0].error){
@@ -106,9 +130,29 @@
 					return 0;
 				});
 				ractive.set("employees", employees);
-				console.log(employees);
+				console.log("Employees", employees);
 			}
-			ractive.set("modla", "none");
 		}
+		lock2 = true;
 	});
+	
+	var lock3 = false;
+	httpRequest("GET","/api?action=gethours&allemployees&fromday="+getdate(lastweek),"",function(http){
+		var result = JSON.parse(http.responseText);
+		var hrs = {};
+		result.forEach(function(itm){
+			if(itm.uid in hrs) hrs[itm.uid] += itm.hours;
+			else hrs[itm.uid] = itm.hours;
+		});
+		ractive.set("hours", hrs);
+		console.log("Hours", result, hrs);
+		lock3 = true;
+	});
+	
+	var modalIntv = setInterval(function(){
+		if(lock1 && lock2 && lock3){
+			ractive.set("modla", "none");
+			clearInterval(modalIntv);
+		}
+	}, 250);
 </script>
