@@ -186,3 +186,13 @@ https://stackoverflow.com/questions/5070111/difference-in-minutes-from-two-time-
 https://www.amcharts.com/kbase/real-time-data/
 
 https://stackoverflow.com/questions/17482554/change-autoindex-number-mysql
+
+------------------------------------
+
+2018-04-16
+
+weekly goal was not met, firmware fix found to not be needed, worked on interface, got far
+
+new goal: get the rfid packets to actually work, work on interface, see about cron jobs
+
+https://en.wikipedia.org/wiki/Regular_expression

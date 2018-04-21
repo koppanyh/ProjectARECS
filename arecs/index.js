@@ -96,10 +96,79 @@ app.post('/account', urlencodedParser, function(req, res){
 					res.redirect('/clockin.html');
 				} else res.redirect("/account/login.html?err2");
 			}
-		},"login",errfunc,errfunc,function(result){ errfunc(result); res.redirect("/account/login.html?err3"); });
+		},"login",errfunc,errfunc,function(result){
+			//errfunc(result);
+			res.redirect("/account/login.html?err3");
+		});
 	} else if(req.body.action == "getuser"){
-		if(req.session) res.send(req.session.user);
-		else res.send("");
+		if(req.session){
+			var dat = req.body;
+			if("uid" in dat){
+				if(req.session.user.admin){
+					var query = "SELECT * from userdb WHERE uid=?";
+					var errfunc = function(inp){ res.send(JSON.stringify(inp)); }
+					mysqlquery(query,[dat.uid],function(result){
+						if(result.length == 0) res.send('{"error":"Unknown user: '+dat.uid+'"}');
+						else{
+							result = result[0];
+							delete result.salt;
+							delete result.hashpw;
+							result.days = JSON.parse(result.days);
+							res.send(JSON.stringify(result));
+						}
+					},"getuser",errfunc,errfunc,errfunc);
+				} else{
+					console.log("getuser: Unauthorized access by ", req.session.user.fname, req.session.user.lname);
+					res.send('{"error":"Unauthorized access to API call getuser, event will be logged"}');
+				}
+			} else res.send(req.session.user);
+		} else res.send("");
+	} else if(req.body.action == "updateestim"){
+		if(req.session){
+			var dat = req.body;
+			if(["start","hours"].indexOf(dat.tag) >= 0){
+				if(dat.tag == "hours" && isNaN(parseFloat(dat.value))){
+					res.send('{"error":"updateestim: Hours is not a valid number: '+dat.value+'"}');
+					return;
+				}
+				if(dat.tag == "hours") req.session.user.days[dat.day][0] = parseFloat(dat.value);
+				else req.session.user.days[dat.day][1] = dat.value;
+				var query = "UPDATE userdb SET days=? WHERE uid=?";
+				var queryparms = [JSON.stringify(req.session.user.days), req.session.user.uid];
+				var errfunc = function(inp){ res.send(JSON.stringify(inp)); }
+				mysqlquery(query,queryparms,function(result){
+					res.send(JSON.stringify(result));
+				},"updateestim",errfunc,errfunc,errfunc);
+			} else res.send('{"error":"updateestim: Incorrect column value: '+ dat.tag +'"}');
+		} else res.send("");
+	} else if(req.body.action == "edituser"){
+		//////////////////////////// finish this/ /j////////////////
+		/*if(req.session){
+			var dat = req.body; //action, uid, tag, value
+			if(["email","fname","lname","admin","wage","picture","rfid","passwd"].indexOf(dat.tag) >= 0){
+				var query = "UPDATE userdb SET "+dat.tag+"=? WHERE uid=?";
+				var queryparms = [dat.value];
+				if(dat.tag == "passwd"){
+					var salt = crypto.randomBytes(16).toString("hex");
+					var hash = crypto.createHmac('sha512', salt);
+					hash.update(dat.value);
+					queryparms[0] = hash.digest("hex");
+					queryparms.push(salt);
+					query = "UPDATE userdb SET hashpw=?, salt=? WHERE uid=?";
+				}
+				if("uid" in dat){
+					//check if admin
+					if(!req.session.user.uid.admin){
+						console.log("getuser: Unauthorized access by ", req.session.user.fname, req.session.user.lname);
+						res.send('{"error":"Unauthorized access to API call getuser, event will be logged"}');
+						return;
+					}
+					queryparms.push(dat.uid);
+				} else queryparms.push(req.session.user.uid);
+			} else res.send('{"error":"edituser: Incorrect column value: '+dat.tag+'"}');
+			// uid, email, salt, hash, fname, lname, admin, wage, days, picture, rfid
+		} else res.send("");*/
+		res.send('{"error":"Feature not implemented"}');
 	} else if(req.body.action == "logout"){
 		req.redirect("account/logout");
 	} else{
@@ -139,7 +208,7 @@ function apiFunc(req, res){
 		console.log("Got time at", (new Date()));
 		res.end(Math.floor(Date.now() / 1000) + "");
 	}
-	else if(!isLoggedIn(req)) res.end("Must be logged in to use API");
+	else if(!isLoggedIn(req)) res.send('{"error":"Must be logged in to use API"}');
 	else{
 		if(dat.action == "getclocks"){
 			var query = "SELECT * FROM daydb WHERE uid=?";
@@ -245,7 +314,7 @@ function apiFunc(req, res){
 		}
 		else if(dat.action == "gethours"){
 			var errfunc = function(inp){ res.send(JSON.stringify(inp)); }
-			var query = "day,hours FROM daydb";
+			var query = "day,hours,tend FROM daydb";
 			var queryparms = [];
 			if("allemployees" in dat){
 				if(req.session.user.admin){

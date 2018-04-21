@@ -52,7 +52,8 @@
 		<img id="profilepic" src="/userpics/{{user.picture}}">
 		<img id="logo" src="/images/logo.png"><br>
 		<a href="/">Home</a>&nbsp;&nbsp;
-		{{#if user.admin}}<a href="/users.html">Manage Employees</a>&nbsp;&nbsp;{{/if}}
+		{{#if user.admin}}<a href="/users.html">Manage Employees</a>&nbsp;&nbsp;
+		<a href="/admin.html">Administration</a>&nbsp;&nbsp;{{/if}}
 		<a href="/account/logout">Log Out</a>
 	</nav>
 	
@@ -70,13 +71,14 @@
 		{{user.email}}<br><br>
 		${{(user.wage * totalhours).toFixed(2)}} @ {{totalhours.toFixed(2)}} hours<br><br>
 		
-		{{#if edithours}}<input type="number" value="{{estimhours}}"><button on-click="edithours">Done</button>
-		{{else}}<span class="editable" on-click="edithours">Estimated hours for today: {{estimhours.toFixed(2)}}</span>{{/if}}
+		{{#if edithours}}<input type="number" value="{{estimhours}}"><button on-click="editestim">Done</button>
+		{{else}}<span class="editable" on-click="editestim">Estimated hours for today: {{estimhours.toFixed(2)}}</span>{{/if}}
 	</div>
 	<br style="clear: both">
 	
 	<div id="graph" style="width: 100%; height: 500px"></div><br>
 	
+	<!--This week's work, not editable-->
 	<div style="text-align: center">
 		<b>This week's work:</b><br>
 		<table border="1">
@@ -89,34 +91,17 @@
 			</tr>{{/if}}
 			{{#each .thisweek}}<tr>
 				<td style="min-width: 6em">{{.date}}</td>
-				<td>
-					{{#if .estart}}<input type="time" value="{{.tstart}}">
-					{{else}}{{.tstart}}{{/if}}
-				</td>
-				<td>
-					{{#if .eend}}<input type="time" value="{{.tend}}">
-					{{else}}{{.tend}}{{/if}}
-				</td>
-				<td style="min-width: 6em">
-					{{#if .eprj}}<select value="{{.pid}}" style="width: 100%">
-						{{#each projs}}<option value={{.pid}}>{{.title}}</option>{{/each}}
-					</select>
-					{{else}}{{projs2[.pid]}}{{/if}}
-				</td>
-				<td style="width: 100%">
-					{{#if .edesc}}<input type="text" value="{{.description}}">
-					{{else}}{{.description}}{{/if}}
-				</td>
+				<td style="min-width: 4em">{{.tstart}}</td>
+				<td style="min-width: 4em">{{.tend}}</td>
+				<td style="min-width: 6em">{{projs2[.pid]}}</td>
+				<td style="width: 100%; text-align: left">{{.description}}</td>
 			</tr>{{else}}<tr><td>No work yet</td></tr>{{/each}}
 		</table><br><br>
 		
-		{{#if .editing}}
-		<button on-click="canceledit">Cancel</button>
-		<button on-click="doneedit">Save Changes</button>
-		{{/if}}
-		
 		<!--Past day hours and works with span selector, not editable-->
-		<b>Historical hours:</b><br>
+		<b>Historical hours:<br>
+		<input type="date" value="{{hstart}}"> to <input type="date" value="{{hend}}">
+		<button on-click="history">Search</button></b><br>
 		<table border="1">
 			{{#if .historical.length > 0}}<tr>
 				<th>Day</th>
@@ -127,25 +112,11 @@
 			</tr>{{/if}}
 			{{#each .historical}}<tr>
 				<td style="min-width: 6em">{{.date}}</td>
-				<td on-click="editstart" style="min-width: 4em" class="editable">
-					{{#if .estart}}<input type="time" value="{{.tstart}}">
-					{{else}}{{.tstart}}{{/if}}
-				</td>
-				<td on-click="editend" style="min-width: 4em" class="editable">
-					{{#if .eend}}<input type="time" value="{{.tend}}">
-					{{else}}{{.tend}}{{/if}}
-				</td>
-				<td on-click="editprj" style="min-width: 6em" class="editable">
-					{{#if .eprj}}<select value="{{.pid}}" style="width: 100%">
-						{{#each projs}}{{#if .active}}<option value={{.pid}}>{{.title}}</option>{{/if}}{{/each}}
-					</select>
-					{{else}}{{projs2[.pid]}}{{/if}}
-				</td>
-				<td on-click="editwork" style="width: 100%" class="editable">
-					{{#if .edesc}}<input type="text" value="{{.description}}">
-					{{else}}{{.description}}{{/if}}
-				</td>
-			</tr>{{else}}<tr><td>Search to populate table (Coming Soon)</td></tr>{{/each}}
+				<td style="min-width: 4em">{{.tstart}}</td>
+				<td style="min-width: 4em">{{.tend}}</td>
+				<td style="min-width: 6em">{{projs2[.pid]}}</td>
+				<td style="width: 100%; text-align: left">{{.description}}</td>
+			</tr>{{else}}<tr><td>Search to populate table</td></tr>{{/each}}
 		</table><br><br>
 		
 		<!--Estimated times table, editable-->
@@ -158,12 +129,23 @@
 				<th>Avg. Hours</th>
 			</tr>
 			{{#each .estimate}}<tr>
-				<td on-click="" style="min-width: 4em">{{.day}}</td>
-				<td on-click="" class="editable" style="min-width: 4em">{{.start}}</td>
-				<td on-click="" class="editable" style="min-width: 4em">{{.end}}</td>
-				<td on-click="" class="editable" style="min-width: 4em">{{.hours}}</td>
+				<td style="min-width: 4em">{{.day}}</td>
+				<td on-click="editstart" class="editable" style="min-width: 4em">
+					{{#if .estart}}<input type="time" value="{{.start}}">
+					{{else}}{{.start}}{{/if}}
+				</td>
+				<td on-click="editend" style="min-width: 4em">{{.end}}</td>
+				<td on-click="edithours" class="editable" style="min-width: 4em">
+					{{#if .ehours}}<input type="number" value="{{.hours}}">
+					{{else}}{{.hours}}{{/if}}
+				</td>
 			</tr>{{else}}Loading...{{/each}}
-		</table><br><br>
+		</table><br>
+		
+		{{#if currentedit != null}}
+		<button on-click="canceledit">Cancel</button>
+		<button on-click="doneedit">Save Changes</button><br>
+		{{/if}}<br>
 	</div>
 	
 	<div on-click="closemodal" style="display: {{modla}}">
@@ -176,8 +158,29 @@
 	var userdict = {};
 	var did = null;
 	var days = [];
+	var ractive = null;
 	
-	var ractive = new Ractive({
+	function pushedit(){
+		var cedit = ractive.get("currentedit");
+		if(cedit != null){
+			ractive.set("modla", "");
+			ractive.set("currentedit", null);
+			cedit.value = ractive.get("estimate["+cedit.indx+"]."+cedit.tag);
+			ractive.set("estimate["+cedit.indx+"].e"+cedit.tag, undefined);
+			var req = "day="+cedit.indx+"&tag="+cedit.tag+"&value="+encodeURIComponent(cedit.value);
+			httpRequest("POST","/account","action=updateestim&"+req,function(http){
+				var res = JSON.parse(http.responseText);
+				console.log("OUTPUT: ", res);
+				checkError(res);
+				ractive.set("modla", "none");
+			});
+			var row = ractive.get("estimate["+cedit.indx+"]");
+			ractive.set("estimate["+cedit.indx+"].end", addhours(row.start, row.hours));
+			console.log("Pushing to server", cedit);
+		}
+	}
+	
+	ractive = new Ractive({
 		target: '#body',
 		template: '#template',
 		data: {
@@ -202,36 +205,104 @@
 			edithours: false,
 			estimhours: 0,
 			orgestimhours: 0,
+			currentedit: null, //{indx: 0, tag: "", value: "", orig: ""}
+			hstart: getdate(),
+			hend: getdate(),
+			historical: []
 		},
 		oninit: function(){
 			this.on("closemodal", function(event){
 				//this.set("modla", "none");
 			});
-			this.on("edithours", function(event){
-				var isedit = ractive.get("edithours")
-				ractive.set("edithours", !isedit);
+			this.on("editestim", function(event){
+				var isedit = this.get("edithours")
+				this.set("edithours", !isedit);
 				if(isedit){
-					ractive.set("modla","");
+					this.set("modla","");
 					var num = event.get("estimhours");
 					var isvalid = !isNaN(1 * num);
 					if(isvalid){
 						if(num * 1 > 0){
 							httpRequest("GET","/api?action=editclocks&tag=hours&did="+did+"&value="+num,"",function(http){
 								http = JSON.parse(http.responseText);
+								checkError(http);
 								ractive.set("modla","none");
 								console.log(http);
 							});
-							ractive.set("orgestimhours", ractive.get("estimhours"));
+							this.set("orgestimhours", this.get("estimhours"));
 						} else{
-							ractive.set("estimhours", ractive.get("orgestimhours"));
-							ractive.set("modla", "none");
+							this.set("estimhours", this.get("orgestimhours"));
+							this.set("modla", "none");
 						}
 					} else{
-						ractive.set("estimhours", ractive.get("orgestimhours"));
-						ractive.set("modla", "none");
+						this.set("estimhours", this.get("orgestimhours"));
+						this.set("modla", "none");
 					}
 					console.log("Update today's hours", isvalid, num);
 				}
+			});
+			
+			this.on("editstart", function(event){
+				var a = event.get();
+				if(!a.estart){
+					pushedit();
+					this.set("currentedit", {indx: a.indx, tag: "start", orig: a.start});
+					event.set("estart", true);
+				}
+			});
+			this.on("edithours", function(event){
+				var a = event.get();
+				if(!a.ehours){
+					pushedit();
+					this.set("currentedit", {indx: a.indx, tag: "hours", orig: a.hours});
+					event.set("ehours", true);
+				}
+			});
+			this.on("canceledit", function(event){
+				var cedit = this.get("currentedit");
+				this.set("estimate["+cedit.indx+"].e"+cedit.tag, undefined);
+				this.set("estimate["+cedit.indx+"]."+cedit.tag, cedit.orig);
+				this.set("currentedit", null);
+			});
+			this.on("doneedit", function(event){
+				pushedit();
+			});
+			
+			this.on("history", function(event){
+				ractive.set("modla", "");
+				var req = "fromday="+ractive.get("hstart")+"&today="+ractive.get("hend");
+				httpRequest("GET","/api?action=getclocks&notjustnull&"+req,"",function(http){
+					var resp = JSON.parse(http.responseText);
+					checkError(resp);
+					if(resp.length > 0){
+						var mmin = resp[0].did;
+						var mmax = resp[0].did;
+						var dates = {};
+						resp.forEach(function(itm){
+							if(itm.did > mmax) mmax = itm.did;
+							if(itm.did < mmin) mmin = itm.did;
+							dates[itm.did] = itm.day.split("T")[0];
+						});
+						req = "fromdid="+mmin+"&todid="+mmax;
+						httpRequest("GET","/api?action=getworks&"+req,"",function(http){
+							var pser = JSON.parse(http.responseText);
+							checkError(pser);
+							pser = pser.map(function(itm){
+								itm.date = dates[itm.did];
+								itm.tstart = itm.tstart.split(":").slice(0,2).join(":");
+								itm.tend = itm.tend.split(":").slice(0,2).join(":");
+								return itm;
+							});
+							ractive.set("historical", pser);
+							ractive.set("modla", "none");
+							console.log("OUTPUT:", pser);
+						});
+					} else{
+						ractive.set("historical", []);
+						ractive.set("modla", "none");
+					}
+					console.log("OUTPUT:", resp);
+				});
 			});
 		}
 	});
@@ -299,6 +370,7 @@
 		if(http.responseText == "") document.location = "/account";
 		else{
 			userdict = JSON.parse(http.responseText);
+			checkError(userdict);
 			ractive.set("user", userdict);
 			for(var i=0; i<7; i++){
 				if(userdict.days[i] != undefined){
@@ -318,6 +390,7 @@
 	httpRequest("GET","/api?action=getprojs&nodesc","",function(http){
 		if(http.responseText != ""){
 			var pjs = JSON.parse(http.responseText);
+			checkError(pjs);
 			pjs.unshift({pid: 0, title: "None", active: 1});
 			ractive.set("projs", pjs);
 			var pjs2 = {};
@@ -333,6 +406,7 @@
 	httpRequest("GET","/api?action=getclocks&notjustnull&week="+getdate(),"",function(http){
 		if(http.responseText != ""){
 			days = JSON.parse(http.responseText);
+			checkError(days);
 			days = days.map(function(itm){
 				var t = new Date(itm.day);
 				itm.day = itm.day.split("T")[0];
@@ -343,7 +417,8 @@
 			if(days.length > 0){
 				httpRequest("GET","/api?action=getworks&fromdid="+days[0].did+"&todid="+days[days.length-1].did,"",function(http){
 					if(http.responseText != ""){
-						var ans = JSON.parse(http.responseText)
+						var ans = JSON.parse(http.responseText);
+						checkError(ans);
 						ans = ans.map(function(itm){
 							var day = days.find(function(mti){ return mti.did == itm.did; })
 							itm.date = day.day;
@@ -394,7 +469,7 @@
 				});
 				
 				did = days[days.length-1].did;
-				if(days[days.length-1].hours > 0){
+				if(days[days.length-1].dat == getdate() && days[days.length-1].hours > 0){
 					ractive.set("estimhours", days[days.length-1].hours);
 					ractive.set("orgestimhours", ractive.get("estimhours"));
 				}
@@ -405,9 +480,10 @@
 	
 	var lock5 = false;
 	var lastweek = new Date();
-	lastweek.setTime(lastweek.getTime() - 14*24*3600*1000);
+	lastweek.setTime(lastweek.getTime() - 13*24*3600*1000);
 	httpRequest("GET","/api?action=gethours&fromday="+getdate(lastweek),"",function(http){
 		http = JSON.parse(http.responseText);
+		checkError(http);
 		var total = 0;
 		http.forEach(function(itm){ total += itm.hours; });
 		ractive.set("totalhours", total);

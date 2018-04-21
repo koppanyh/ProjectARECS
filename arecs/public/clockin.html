@@ -35,7 +35,9 @@
 	<nav>
 		<img id="logo" src="/images/logo.png">
 		<a href="/account/user.html"><img id="profilepic" src="/userpics/{{ppic}}"></a><br>
-		{{#if isAdmin}}<a href="/users.html">Manage Employees</a>{{/if}}
+		{{#if isAdmin}}<a href="/users.html">Manage Employees</a>
+		&nbsp;&nbsp;<a href="/admin.html">Administration</a>
+		{{/if}}
 	</nav>
 	
 	<div style="text-align: center">
@@ -93,7 +95,7 @@
 					</select>
 					{{else}}{{projs2[.pid]}}{{/if}}
 				</td>
-				<td on-click="editwork" style="width: 100%" class="editable">
+				<td on-click="editwork" style="width: 100%; text-align: left" class="editable">
 					{{#if .edesc}}<input type="text" value="{{.description}}">
 					{{else}}{{.description}}{{/if}}
 				</td>
@@ -143,7 +145,9 @@
 				EUC(ractive.get("today["+ind+"]."+wdict.tag))
 			];
 			httpRequest("POST","/api?action=editworks","wid="+entry[0]+"&tag="+entry[1]+"&value="+entry[2],function(http){
-				console.log("OUTPUT:",http.responseText);
+				var outp = JSON.parse(http.responseText);
+				checkError(outp);
+				console.log("OUTPUT:", outp);
 				ractive.set("modla","none");
 			});
 			console.log("Pushing to server", entry);
@@ -184,7 +188,10 @@
 				dt.setTime(dt.getTime() + this.get("estimhours")*3600*1000);
 				this.set("leavetime", gettime(dt));
 				httpRequest("POST","/api?action=addclocks","date="+dat+"&time="+EUC(this.get("clockintime")),function(http){
-					console.log("OUTPUT:", JSON.parse(http.responseText));
+					var outp = JSON.parse(http.responseText);
+					checkError(outp);
+					did = outp.insertId;
+					console.log("OUTPUT:", outp);
 					ract.set("clocked", true);
 					ract.set("modla","none");
 				});
@@ -203,7 +210,9 @@
 				du.setSeconds(0);
 				this.set("totaltime", (dt - du) / 3600000);
 				httpRequest("POST","/api?action=editclocks","did="+did+"&tag=tend&value="+EUC(gettime(dt)),function(http){
-					console.log("OUTPUT:", JSON.parse(http.responseText));
+					var outp = JSON.parse(http.responseText);
+					checkError(outp);
+					console.log("OUTPUT:", outp);
 					ract.set("clocked",false);
 					ract.set("modla","none");
 				});
@@ -228,6 +237,7 @@
 						"&pid="+entry.pid+"&tstart="+EUC(entry.tstart)+"&tend="+
 						EUC(entry.tend)+"&desc="+EUC(entry.description),function(http){
 						var outp = JSON.parse(http.responseText);
+						checkError(outp);
 						console.log("OUTPUT:",outp);
 						entry.wid = outp.insertId;
 						ract.push("today", entry);
@@ -301,6 +311,7 @@
 		if(http.responseText == "") document.location = "/account";
 		else{
 			userdict = JSON.parse(http.responseText);
+			checkError(userdict);
 			ractive.set("ppic", userdict.picture);
 			ractive.set("isAdmin", userdict.admin);
 			console.log(userdict);
@@ -315,6 +326,7 @@
 	httpRequest("GET","/api?action=getprojs&nodesc","",function(http){
 		if(http.responseText != ""){
 			var pjs = JSON.parse(http.responseText);
+			checkError(pjs);
 			pjs.unshift({pid: 0, title: "None", active: 1});
 			ractive.set("projs", pjs);
 			var pjs2 = {};
@@ -330,6 +342,7 @@
 	httpRequest("GET","/api?action=getclocks&date="+getdate(),"",function(http){
 		if(http.responseText != ""){
 			var ans = JSON.parse(http.responseText);
+			checkError(ans);
 			console.log("Clock:", ans);
 			if(ans.length > 0){
 				ans = ans[0];
@@ -340,21 +353,23 @@
 				if(ans.hours > 0) ractive.set("estimhours", ans.hours);
 				t = addhours(t, ractive.get("estimhours"));
 				ractive.set("leavetime", t);
-			}
-		}
-		httpRequest("GET","/api?action=getworks&did="+did,"",function(http){
-			if(http.responseText != ""){
-				var ans = JSON.parse(http.responseText);
-				ans = ans.map(function(itm){
-					itm.tstart = itm.tstart.split(":").slice(0,2).join(":");
-					itm.tend = itm.tend.split(":").slice(0,2).join(":");
-					return itm;
+				
+				httpRequest("GET","/api?action=getworks&did="+did,"",function(http){
+					if(http.responseText != ""){
+						var ans = JSON.parse(http.responseText);
+						checkError(ans);
+						ans = ans.map(function(itm){
+							itm.tstart = itm.tstart.split(":").slice(0,2).join(":");
+							itm.tend = itm.tend.split(":").slice(0,2).join(":");
+							return itm;
+						});
+						console.log("Works:", ans);
+						ractive.set("today", ans);
+					}
+					lock4 = true;
 				});
-				console.log("Works:", ans);
-				ractive.set("today", ans);
-			}
-			lock4 = true;
-		});
+			} else lock4 = true;
+		}
 		lock3 = true;
 	});
 	

@@ -1,0 +1,249 @@
+<!DOCTYPE HTML>
+<html>
+	<head>
+		<title>ARECS - View Profile</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<link rel="icon" href="/images/stop-watch.png">
+		<link rel="stylesheet" type="text/css" href="/style.css">
+		<script type="text/javascript" src="/ractive.js"></script>
+		<script type="text/javascript" src="/core.js"></script>
+		<style>
+			#chpic {
+				background-color: rgba(50,50,50,0.5);
+				opacity: 0;
+				position: absolute;
+				top: 0;
+				left: 0;
+				width: 100px;
+				height: 100px;
+				text-align: center;
+			}
+			#chpic:hover {
+				opacity: 1;
+			}
+		</style>
+	</head>
+	<body id="body"></body>
+</html>
+
+<script id="template" type="text/ractive">
+	<nav>
+		<img id="logo" src="/images/logo.png">
+		<a href="/account/user.html"><img id="profilepic" src="/userpics/{{ppic}}"></a><br>
+		<a href="/">Home</a>&nbsp;&nbsp;
+		<a href="/users.html">Manage Employees</a>
+	</nav>
+	
+	<div style="padding: 5px">
+		<div style="position: relative; display: inline-block">
+			<img src="/userpics/{{user.picture}}" width="100" height="100"><br>
+			<div id="chpic">
+				<a href="" style="color: white; background-color: black">Change Picture</a>
+			</div>
+		</div>
+		<div style="display: inline-block; margin-left: 10px">
+			<div>
+				Name:
+				{{#if efname}}<input type="text" value="{{user.fname}}">
+				{{else}}<span class="editable" on-click="editfname">{{user.fname}}</span>{{/if}}
+				{{#if elname}}<input type="text" value="{{user.lname}}">
+				{{else}}<span class="editable" on-click="editlname">{{user.lname}}</span>{{/if}}
+			</div>
+			<div class="editable" on-click="editmail">
+				Email:
+				{{#if eemail}}<input type="text" value="{{user.email}}">{{else}}{{user.email}}{{/if}}
+			</div>
+			<div class="editable" on-click="editwage">
+				Wage:
+				{{#if ewage}}$<input type="number" value="{{user.wage}}">
+				<select value="{{user.wagetype}}">
+					<option value="1">Hourly</option>
+					<option value="-1">Salary</option>
+				</select>
+				{{else}}${{user.wage}} {{#if user.wagetype > 0}}Hourly{{else}}Salary{{/if}}{{/if}}
+			</div>
+			<div class="editable" on-click="editrfid">
+				RFID:
+				{{#if erfid}}<input type="text" value="{{user.rfid}}">{{else}}{{user.rfid}}{{/if}}
+			</div>
+			<div class="editable" on-click="editadmin">
+				Admin:
+				{{#if eadmin}}<select value="{{user.admin}}">
+					<option value="0">No</option>
+					<option value="1">Yes</option>
+				</select>
+				{{else}}{{#if user.admin == 1}}Yes{{else}}No{{/if}}{{/if}}
+			</div>
+		</div>
+		
+		{{#if currentedit1 != null}}
+		<br><div style="display: inline-block; margin-left: 110px"></div>
+		<button on-click="canceledit">Cancel</button>
+		<button on-click="doneedit">Save Changes</button>
+		{{/if}}<br>
+		
+		<p>Clock Times</p>
+		<p>Works</p>
+		<p>Estimated Times: {{user.days}}</p>
+		
+		<button>Set Password</button><br><br>
+		<button>Delete User</button>
+	</div>
+	
+	<div on-click="closemodal" style="display: {{modla}}">
+		<div class="modal"></div>
+		<img src="images/loading.gif" class="loading">
+	</div>
+</script>
+
+<script>
+	var userdict = {};
+	var ractive = null;
+	
+	function pushedit1(){
+		var curedit = ractive.get("currentedit1");
+		if(curedit != null){
+			ractive.set("currentedit1", null);
+			ractive.set("e" + curedit.tag, undefined);
+			ractive.set("modla", "");
+			
+			var req = "action=edituser";
+			if(curedit.tag == "wage"){
+				curedit.wage = ractive.get("user.wage");
+				curedit.value = curedit.wage * (1 * ractive.get("user.wagetype"));
+			} else curedit.value = ractive.get("user." + curedit.tag);
+			req += "&uid=" + ractive.get("user.uid");
+			req += "&tag=" + curedit.tag;
+			req += "&value=" + encodeURIComponent(curedit.value);
+			console.log(curedit, req);
+			httpRequest("POST","/account",req,function(http){
+				var res = JSON.parse(http.responseText);
+				checkError(res);
+				ractive.set("modla", "none");
+			});
+		}
+	}
+	
+	ractive = new Ractive({
+		target: '#body',
+		template: '#template',
+		data: {
+			modla: "",
+			ppic: "user.png",
+			user: {picture: "user.png"},
+			currentedit1: null //{tag, org}
+		},
+		oninit: function(){
+			this.on("closemodal", function(event){
+				//this.set("modla", "none");
+			});
+			
+			this.on("editfname", function(event){
+				if(!this.get("efname")){
+					pushedit1();
+					this.set({currentedit1: {
+						tag: "fname", org: event.get("user.fname")
+					}, efname: true});
+				}
+			});
+			this.on("editlname", function(event){
+				if(!this.get("elname")){
+					pushedit1();
+					this.set({currentedit1: {
+						tag: "lname", org: event.get("user.lname")
+					}, elname: true});
+				}
+			});
+			this.on("editmail", function(event){
+				if(!this.get("eemail")){
+					pushedit1();
+					this.set({currentedit1: {
+						tag: "email", org: event.get("user.email")
+					}, eemail: true});
+				}
+			});
+			this.on("editwage", function(event){
+				if(!this.get("ewage")){
+					pushedit1();
+					this.set({currentedit1: {
+						tag: "wage", org: [event.get("user.wage"), event.get("user.wagetype")]
+					}, ewage: true});
+				}
+			});
+			this.on("editrfid", function(event){
+				if(!this.get("erfid")){
+					pushedit1();
+					this.set({currentedit1: {
+						tag: "rfid", org: event.get("user.rfid")
+					}, erfid: true});
+				}
+			});
+			this.on("editadmin", function(event){
+				if(!this.get("eadmin")){
+					pushedit1();
+					this.set({currentedit1: {
+						tag: "admin", org: event.get("user.admin")
+					}, eadmin: true});
+				}
+			});
+			this.on("canceledit", function(event){
+				var curedit = this.get("currentedit1");
+				this.set("currentedit1", null);
+				this.set("e"+curedit.tag, undefined);
+				if(curedit.tag == "wage"){
+					this.set("user.wage", curedit.org[0]);
+					this.set("user.wagetype", curedit.org[1]);
+				} else this.set("user." + curedit.tag, curedit.org);
+			});
+			this.on("doneedit", function(event){
+				pushedit1();
+			});
+		},
+	});
+	
+	var lock1 = false;
+	httpRequest("POST","/account","action=getuser",function(http){
+		if(http.responseText == "") document.location = "/account";
+		else{
+			userdict = JSON.parse(http.responseText);
+			checkError(userdict);
+			if(!userdict.admin) document.location = "/account";
+			else{
+				ractive.set("ppic", userdict.picture);
+				console.log(userdict);
+			}
+		}
+		lock1 = true;
+	});
+	
+	var r = /\W(id=\d+)/.exec(document.location.search);
+	if(r == null){
+		alert("Invalid search query: " + document.location.search);
+		document.location = "/users.html";
+	} else r = r[1].split("=")[1];
+	
+	var lock2 = false;
+	httpRequest("POST","/account","action=getuser&uid="+r,function(http){
+		if(http.responseText != ""){
+			var user = JSON.parse(http.responseText);
+			if(checkError(user)) document.location = "/users.html";
+			else{
+				if(user.wage < 0){
+					user.wagetype = -1;
+					user.wage = Math.abs(user.wage);
+				} else user.wagetype = 0;
+				ractive.set("user", user);
+				console.log(user);
+			}
+		}
+		lock2 = true;
+	});
+	
+	var modalIntv = setInterval(function(){
+		if(lock1 && lock2){
+			ractive.set("modla", "none");
+			clearInterval(modalIntv);
+		}
+	}, 250);
+</script>

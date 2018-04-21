@@ -42,3 +42,11 @@ function httpRequest(prot, url, parms, func){
 	};
 	http.send(parms);
 }
+
+function checkError(inp){
+	if("error" in inp){
+		alert(inp.error);
+		return true;
+	}
+	return false;
+}

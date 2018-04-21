@@ -31,6 +31,15 @@ tr:nth-child(even) td {
 td {
 	min-width: 4em;
 }
+td.editable:hover {
+	background-color: #AAA;
+}
+div.editable:hover {
+	background-color: #AAA;
+}
+span.editable:hover {
+	background-color: #AAA;
+}
 .modal {
 	position: fixed;
 	top: 0;

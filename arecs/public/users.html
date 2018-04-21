@@ -11,7 +11,7 @@
 		<style>
 			.card {
 				display: inline-block;
-				background-color: #FFD;
+				background-color: #FDD;
 				border: 1px solid black;
 				border-radius: 5px;
 				margin: 10px;
@@ -31,24 +31,28 @@
 		<a href="">New User</a>
 	</nav>
 	
-	<div>
+	<div style="padding: 5px">
 		Pay Period: <input type="date" value="{{pstart}}"> to <input type="date" value="{{pend}}">
 		<button on-click="money">Update</button><br>
-		<button>Export Financial Data</button>
+		<!--button>Export Financial Data</button>
 	</div>
 	
 	<div>
-		Graph of employee work
+		Graph of employee work-->
 	</div>
 	
 	<div style="text-align: center">
 		<b>Employees</b><br>
 		{{#each employees}}
-		<a href="/viewprofile.html?id={{uid}}"><div class="card">
-			<img src="/userpics/{{picture}}" style="height: 100px"><br>
+		<a href="/viewprofile.html?id={{uid}}"><div class="card"
+			style="background-color: {{#if isclocked[uid]}}#DFD{{else}}#FDD{{/if}}">
+			<img src="/userpics/{{picture}}" style="height: 100px; border-radius: 4px"><br>
 			{{lname}}, {{fname}}<br>
 			{{email}}<br>
-			{{#if hours[uid]}}${{(wage * hours[uid]).toFixed(2)}}{{else}}$0{{/if}}
+			{{#if wage < 0}}${{Math.abs(wage).toFixed(2)}}{{else}}
+			${{((hours[uid] ? hours[uid] : 0) * wage).toFixed(2)}}{{/if}}
+			<br>
+			{{#if hours[uid]}}{{hours[uid].toFixed(2)}}{{else}}0{{/if}} hours
 		</div></a>
 		{{/each}}
 	</div><br><br>
@@ -62,7 +66,7 @@
 <script>
 	var userdict = {};
 	var lastweek = new Date();
-	lastweek.setTime(lastweek.getTime() - 14*24*3600*1000);
+	lastweek.setTime(lastweek.getTime() - 13*24*3600*1000);
 	
 	var ractive = new Ractive({
 		target: '#body',
@@ -72,10 +76,11 @@
 			isAdmin: false,
 			ppic: "user.png",
 			employees: [{picture: "user.png", fname: "Loading",
-				lname: "Loading", email: "Loading", uid: 0, wage: "Loading"}],
+				lname: "Loading", email: "Loading", uid: 0, wage: 0}],
 			hours: {}, //[uid]: 0
 			pstart: getdate(lastweek),
-			pend: getdate()
+			pend: getdate(),
+			isclocked: {}
 		},
 		oninit: function(){
 			this.on("closemodal", function(event){
@@ -86,6 +91,7 @@
 				var req = "/api?action=gethours&allemployees&fromday="+event.get("pstart")+"&today="+event.get("pend");
 				httpRequest("GET",req,"",function(http){
 					var result = JSON.parse(http.responseText);
+					checkError(result);
 					var hrs = {};
 					result.forEach(function(itm){
 						if(itm.uid in hrs) hrs[itm.uid] += itm.hours;
@@ -104,6 +110,7 @@
 		if(http.responseText == "") document.location = "/account";
 		else{
 			userdict = JSON.parse(http.responseText);
+			checkError(userdict);
 			if(!userdict.admin) document.location = "/account";
 			else{
 				ractive.set("ppic", userdict.picture);
@@ -115,9 +122,11 @@
 	});
 	
 	var lock2 = false;
+	var lock4 = false;
 	httpRequest("GET","/api?action=getemployees","",function(http){
 		if(http.responseText != ""){
 			var employees = JSON.parse(http.responseText);
+			checkError(employees);
 			if(employees[0].error){
 				ractive.set("employees[0].fname", "Database");
 				ractive.set("employees[0].lname", "Error");
@@ -134,11 +143,24 @@
 			}
 		}
 		lock2 = true;
+		
+		httpRequest("GET","/api?action=gethours&allemployees&fromday="+getdate(),"",function(http){
+			var result = JSON.parse(http.responseText);
+			checkError(result);
+			var clocked = {};
+			result.forEach(function(itm){
+				if(itm.tend == null) clocked[itm.uid] = true;
+			});
+			ractive.set("isclocked", clocked);
+			console.log("OUTPUT:", result, clocked);
+			lock4 = true;
+		});
 	});
 	
 	var lock3 = false;
 	httpRequest("GET","/api?action=gethours&allemployees&fromday="+getdate(lastweek),"",function(http){
 		var result = JSON.parse(http.responseText);
+		checkError(result);
 		var hrs = {};
 		result.forEach(function(itm){
 			if(itm.uid in hrs) hrs[itm.uid] += itm.hours;
@@ -150,7 +172,7 @@
 	});
 	
 	var modalIntv = setInterval(function(){
-		if(lock1 && lock2 && lock3){
+		if(lock1 && lock2 && lock3 && lock4){
 			ractive.set("modla", "none");
 			clearInterval(modalIntv);
 		}
