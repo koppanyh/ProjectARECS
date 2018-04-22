@@ -28,7 +28,7 @@
 		<img id="logo" src="/images/logo.png">
 		<a href="/account/user.html"><img id="profilepic" src="/userpics/{{ppic}}"></a><br>
 		<a href="/">Home</a>&nbsp;&nbsp;
-		<a href="">New User</a>
+		<a href="" on-click="newuser">New User</a>
 	</nav>
 	
 	<div style="padding: 5px">
@@ -101,6 +101,18 @@
 					ractive.set("modla", "none");
 					console.log("Hours", result, hrs);
 				});
+			});
+			this.on("newuser", function(event){
+				if(confirm("Create new user")){
+					this.set("modla","");
+					httpRequest("POST","/account","action=newuser",function(http){
+						var result = JSON.parse(http.responseText);
+						checkError(result);
+						console.log(result);
+						document.location = "/viewprofile.html?id=" + result.insertId;
+					});
+				}
+				return false;
 			});
 		},
 	});

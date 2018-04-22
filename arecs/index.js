@@ -4,7 +4,19 @@ const session = require('client-sessions');
 const fs = require('fs');
 const mysql = require('mysql');
 const crypto = require('crypto');
+const cron = require('node-cron');
+const multer = require('multer');
 
+var upload = multer({
+	dest: "public/userpics/",
+	limits: {
+		fileSize: 1024 * 10000 //10MB
+	},
+	fileFilter: function(req, file, cb){
+		if(!file.originalname.match(/\.(png|jpg|jpeg|gif)$/)) return cb(null, false);
+		cb(null, true);
+	}
+});
 var app = express();
 app.use(express.static("public"));
 var server;
@@ -45,7 +57,7 @@ app.use(session({
 	cookieName: "session",
 	secret: "magicTestKey",
 	duration: 7*24*60*60*1000, //7 days
-	activeDuration: 5*24*60*60*1000, //5 days
+	activeDuration: 7*24*60*60*1000, //7 days
 	httpOnly: true
 }));
 
@@ -76,9 +88,36 @@ function mysqlquery(query,params,func,name,err1,err2,err3){
 		if(err3) err3({"error":(name?name+": ":"")+"MySQL pool not initialized"});
 	}
 }
+cron.schedule('59 23 * * *', function(){
+	var dt = new Date();
+	console.log("Clocking out cron job running", dt);
+	var dat = dt.getFullYear()+"-";
+	dat += (dt.getMonth() < 9 ? "0" : "") + (dt.getMonth()+1) + "-";
+	dat += (dt.getDate() <= 9 ? "0" : "") + dt.getDate();
+	mysqlquery("SELECT did,uid,tstart FROM daydb WHERE day=? AND tend IS NULL",[dat],function(daydb){
+		if(daydb.length > 0){
+			mysqlquery("SELECT uid,time FROM rfiddb WHERE day=?",[dat],function(rfiddb){
+				var users = {};
+				rfiddb.forEach(function(itm){
+					if(itm.uid in users){
+						if(itm.time > users[itm.uid]) users[itm.uid] = itm.time;
+					} else users[itm.uid] = itm.time;
+				});
+				var query = "UPDATE daydb SET tend=?, hours=TIME_TO_SEC(TIMEDIFF(tend,tstart))/3600 WHERE did=?";
+				daydb.forEach(function(itm){
+					var usetime = "11:59";
+					if(itm.uid in users){
+						if(users[itm.uid].split('.')[0] != itm.tstart) usetime = users[itm.uid];
+					}
+					mysqlquery(query,[usetime,itm.did],function(result){},"cronjob1.2");
+				});
+			},"cronjob1.1");
+		}
+	},"cronjob1.0");
+});
 
 ///////////////////////////////// account stuff /////////////////////////////
-app.post('/account', urlencodedParser, function(req, res){
+app.post('/account', upload.single("image"), urlencodedParser, function(req, res){
 	if(req.body.action == "login"){
 		var query = "SELECT * from userdb WHERE email=?";
 		var errfunc = function(inp){ res.send(JSON.stringify(inp)); };
@@ -97,16 +136,15 @@ app.post('/account', urlencodedParser, function(req, res){
 				} else res.redirect("/account/login.html?err2");
 			}
 		},"login",errfunc,errfunc,function(result){
-			//errfunc(result);
 			res.redirect("/account/login.html?err3");
 		});
 	} else if(req.body.action == "getuser"){
-		if(req.session){
+		if(isLoggedIn(req)){
 			var dat = req.body;
 			if("uid" in dat){
 				if(req.session.user.admin){
 					var query = "SELECT * from userdb WHERE uid=?";
-					var errfunc = function(inp){ res.send(JSON.stringify(inp)); }
+					var errfunc = function(inp){ res.send(JSON.stringify(inp)); };
 					mysqlquery(query,[dat.uid],function(result){
 						if(result.length == 0) res.send('{"error":"Unknown user: '+dat.uid+'"}');
 						else{
@@ -124,7 +162,7 @@ app.post('/account', urlencodedParser, function(req, res){
 			} else res.send(req.session.user);
 		} else res.send("");
 	} else if(req.body.action == "updateestim"){
-		if(req.session){
+		if(isLoggedIn(req)){
 			var dat = req.body;
 			if(["start","hours"].indexOf(dat.tag) >= 0){
 				if(dat.tag == "hours" && isNaN(parseFloat(dat.value))){
@@ -135,40 +173,82 @@ app.post('/account', urlencodedParser, function(req, res){
 				else req.session.user.days[dat.day][1] = dat.value;
 				var query = "UPDATE userdb SET days=? WHERE uid=?";
 				var queryparms = [JSON.stringify(req.session.user.days), req.session.user.uid];
-				var errfunc = function(inp){ res.send(JSON.stringify(inp)); }
+				var errfunc = function(inp){ res.send(JSON.stringify(inp)); };
 				mysqlquery(query,queryparms,function(result){
 					res.send(JSON.stringify(result));
 				},"updateestim",errfunc,errfunc,errfunc);
 			} else res.send('{"error":"updateestim: Incorrect column value: '+ dat.tag +'"}');
 		} else res.send("");
 	} else if(req.body.action == "edituser"){
-		//////////////////////////// finish this/ /j////////////////
-		/*if(req.session){
+		if(isLoggedIn(req)){
 			var dat = req.body; //action, uid, tag, value
 			if(["email","fname","lname","admin","wage","picture","rfid","passwd"].indexOf(dat.tag) >= 0){
-				var query = "UPDATE userdb SET "+dat.tag+"=? WHERE uid=?";
-				var queryparms = [dat.value];
+				/*if(dat.tag == "picture"){
+					//res.send('{"error": '+JSON.stringify(req.body)+'}');
+					req.session.user.picture = req.file.filename;
+					mysqlquery("UPDATE userdb SET picture=? WHERE uid=?");
+					res.redirect(dat.redir);
+					return;
+				}*/
+				var query = "";
+				var queryparms = [];
 				if(dat.tag == "passwd"){
 					var salt = crypto.randomBytes(16).toString("hex");
 					var hash = crypto.createHmac('sha512', salt);
 					hash.update(dat.value);
-					queryparms[0] = hash.digest("hex");
-					queryparms.push(salt);
 					query = "UPDATE userdb SET hashpw=?, salt=? WHERE uid=?";
+					queryparms.push(hash.digest("hex"));
+					queryparms.push(salt);
+				} else{
+					query = "UPDATE userdb SET "+dat.tag+"=? WHERE uid=?";
+					queryparms.push(dat.value);
 				}
 				if("uid" in dat){
-					//check if admin
-					if(!req.session.user.uid.admin){
-						console.log("getuser: Unauthorized access by ", req.session.user.fname, req.session.user.lname);
-						res.send('{"error":"Unauthorized access to API call getuser, event will be logged"}');
+					if(!req.session.user.admin){
+						console.log("edituser: Unauthorized access by ", req.session.user.fname, req.session.user.lname);
+						res.send('{"error":"Unauthorized access to API call edituser, event will be logged"}');
 						return;
 					}
 					queryparms.push(dat.uid);
 				} else queryparms.push(req.session.user.uid);
+				var errfunc = function(inp){ res.send(JSON.stringify(inp)); };
+				mysqlquery(query,queryparms,function(result){
+					res.send(JSON.stringify(result));
+				},"edituser",errfunc,errfunc,errfunc);
 			} else res.send('{"error":"edituser: Incorrect column value: '+dat.tag+'"}');
-			// uid, email, salt, hash, fname, lname, admin, wage, days, picture, rfid
-		} else res.send("");*/
-		res.send('{"error":"Feature not implemented"}');
+		} else res.send("");
+	} else if(req.body.action == "newuser"){
+		if(isLoggedIn(req)){
+			if(req.session.user.admin){
+				var errfunc = function(inp){ res.send(JSON.stringify(inp)); };
+				var query = "INSERT INTO userdb (email,salt,hashpw,fname,lname) VALUES ";
+				query += "('email@email.com','0000','00000000','First','Last')";
+				mysqlquery(query,[],function(result){
+					res.send(JSON.stringify(result));
+				},"newuser",errfunc,errfunc,errfunc);
+			} else{
+				console.log("newuser: Unauthorized access by ", req.session.user.fname, req.session.user.lname);
+				res.send('{"error":"Unauthorized access to API call newuser, event will be logged"}');
+			}
+		} else{
+			console.log("newuser: Unauthorized access by unknown user");
+			res.send('{"error":"Unauthorized access to API call newuser, event will be logged"}');
+		}
+	} else if(req.body.action == "deleteuser"){
+		if(isLoggedIn(req)){
+			if(req.session.user.admin){
+				var errfunc = function(inp){ res.send(JSON.stringify(inp)); };
+				mysqlquery("DELETE FROM userdb WHERE uid=?",[req.body.uid],function(result){
+					res.send(JSON.stringify(result));
+				},"deleteuser",errfunc,errfunc,errfunc);
+			} else{
+				console.log("deleteuser: Unauthorized access by ", req.session.user.fname, req.session.user.lname);
+				res.send('{"error":"Unauthorized access to API call deleteuser, event will be logged"}');
+			}
+		} else{
+			console.log("edituser: Unauthorized access by unknown user");
+			res.send('{"error":"Unauthorized access to API call edituser, event will be logged"}');
+		}
 	} else if(req.body.action == "logout"){
 		req.redirect("account/logout");
 	} else{
@@ -198,11 +278,42 @@ function apiFunc(req, res){
 	var dat = Object.assign(req.query, req.body);
 	if(dat.action == "rfidevent"){
 		var rf = req.body; //{node:"", time:"", id:""}
-		console.log(rf);
+		
 		var tm = new Date();
 		tm.setTime(rf.time * 1000);
-		console.log(tm, (new Date()));
-		res.end("success");
+		var month = tm.getMonth()+1;
+		if(month < 10) month = "0"+month;
+		var day = tm.getDate();
+		if(day < 10) day = "0"+day;
+		var hours = tm.getHours();
+		if(hours < 10) hours = "0"+hours;
+		var minutes = tm.getMinutes();
+		if(minutes < 10) minutes = "0"+minutes;
+		var fulldate = tm.getFullYear()+"-"+month+"-"+day;
+		var fulltime = hours+":"+minutes;
+		
+		console.log(rf.id, fulldate, fulltime, rf.node);
+		
+		var errfunc = function(inp){ res.send(JSON.stringify(inp)); }
+		mysqlquery("SELECT uid from userdb WHERE rfid=?",[rf.id],function(result2){
+			if(result2.length > 0){
+				mysqlquery("SELECT sid from scannerdb WHERE devid=?",[rf.node],function(result1){
+					if(result1.length > 0){
+						var query = "INSERT INTO rfiddb (uid, sid, day, time) VALUES (?,?,?,?)"
+						mysqlquery(query,[result2[0].uid, result1[0].sid, fulldate, fulltime],function(result){
+							res.end("success");
+						},"rfidevent",errfunc,errfunc,errfunc);
+						var query3 = "SELECT did FROM daydb WHERE uid=? AND day=? AND tend IS NULL";
+						mysqlquery(query3,[result2[0].uid, fulldate],function(result3){
+							if(result3.length == 0){
+								var query2 = "INSERT INTO daydb (uid, day, tstart) VALUES (?,?,?)";
+								mysqlquery(query2,[result2[0].uid, fulldate, fulltime],function(result){},"rfidevent");
+							}
+						},"rfidevent");
+					} else res.end("fail");
+				},"rfidevent",errfunc,errfunc,errfunc);
+			} else res.end("fail");
+		},"rfidevent",errfunc,errfunc,errfunc);
 	}
 	else if(dat.action == "gettime"){
 		console.log("Got time at", (new Date()));
@@ -313,7 +424,7 @@ function apiFunc(req, res){
 			},"getprojs",errfunc,errfunc,errfunc);
 		}
 		else if(dat.action == "gethours"){
-			var errfunc = function(inp){ res.send(JSON.stringify(inp)); }
+			var errfunc = function(inp){ res.send(JSON.stringify(inp)); };
 			var query = "day,hours,tend FROM daydb";
 			var queryparms = [];
 			if("allemployees" in dat){
@@ -378,6 +489,13 @@ function apiFunc(req, res){
 }
 app.post('/api', urlencodedParser, function(req, res){ apiFunc(req, res); });
 app.get('/api', function(req, res){ apiFunc(Object.assign(req,{body:{}}), res); });
+
+/*app.post("/test", upload.single("test"), urlencodedParser, function(req, res){
+	//console.log(req);
+	console.log(req.body);
+	console.log(req.file.filename);
+	res.redirect("/account/user.html");
+});*/
 
 server = app.listen(8080, function () {
 	var port = server.address().port;

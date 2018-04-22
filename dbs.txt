@@ -34,7 +34,8 @@ rfiddb
 	rid*		int
 	uid			int
 	sid			int
-	ts			datetime
+	day			date
+	time		time
 
 // holds each of the registered rfid nodes
 scannerdb

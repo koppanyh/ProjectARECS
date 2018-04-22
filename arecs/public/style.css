@@ -59,3 +59,14 @@ span.editable:hover {
 .editable {
 	cursor: url('/images/pencil-32.png') 3 29, auto;
 }
+.uploadimg {
+	position: fixed;
+	width: 500px;
+	margin-left: -250px;
+	top: 40%;
+	left: 50%;
+	background-color: white;
+	text-align: center;
+	padding: 10px;
+}
+

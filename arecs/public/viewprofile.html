@@ -61,7 +61,7 @@
 					<option value="1">Hourly</option>
 					<option value="-1">Salary</option>
 				</select>
-				{{else}}${{user.wage}} {{#if user.wagetype > 0}}Hourly{{else}}Salary{{/if}}{{/if}}
+				{{else}}${{user.wage.toFixed(2)}} {{#if user.wagetype > 0}}Hourly{{else}}Salary{{/if}}{{/if}}
 			</div>
 			<div class="editable" on-click="editrfid">
 				RFID:
@@ -87,8 +87,8 @@
 		<p>Works</p>
 		<p>Estimated Times: {{user.days}}</p>
 		
-		<button>Set Password</button><br><br>
-		<button>Delete User</button>
+		<button on-click="setpass">Set Password</button><br><br>
+		<button on-click="deleteuser">Delete User</button>
 	</div>
 	
 	<div on-click="closemodal" style="display: {{modla}}">
@@ -120,6 +120,7 @@
 			httpRequest("POST","/account",req,function(http){
 				var res = JSON.parse(http.responseText);
 				checkError(res);
+				console.log("Update1", res);
 				ractive.set("modla", "none");
 			});
 		}
@@ -131,7 +132,9 @@
 		data: {
 			modla: "",
 			ppic: "user.png",
-			user: {picture: "user.png"},
+			user: {picture: "user.png", fname: "Loading",
+				lname: "Loading", email: "Loading",
+				wage: "Loading", rfid: "Loading"},
 			currentedit1: null //{tag, org}
 		},
 		oninit: function(){
@@ -199,6 +202,36 @@
 			this.on("doneedit", function(event){
 				pushedit1();
 			});
+			
+			this.on("setpass", function(event){
+				var pass1 = prompt("Enter password");
+				if(pass1 != null){
+					var pass2 = prompt("Confirm password");
+					if(pass1 == pass2){
+						this.set("modla","");
+						var req = "action=edituser&uid="+this.get("user.uid");
+						req += "&tag=passwd&value="+encodeURIComponent(pass1);
+						httpRequest("POST","/account",req,function(http){
+							var result = JSON.parse(http.responseText);
+							checkError(result);
+							console.log("Passwd", result);
+							ractive.set("modla","none");
+						});
+					} else alert("Passwords did not match");
+				}
+			});
+			this.on("deleteuser", function(event){
+				if(confirm("Do you really want to delete user "+this.get("user.fname")+" "+this.get("user.lname"))){
+					this.set("modla","");
+					httpRequest("POST","/account","action=deleteuser&uid="+this.get("user.uid"),function(http){
+						var result = JSON.parse(http.responseText);
+						checkError(result);
+						console.log("Delete", result);
+						document.location = "/users.html";
+						ractive.set("modla","none");
+					});
+				}
+			});
 		},
 	});
 	
@@ -232,7 +265,7 @@
 				if(user.wage < 0){
 					user.wagetype = -1;
 					user.wage = Math.abs(user.wage);
-				} else user.wagetype = 0;
+				} else user.wagetype = 1;
 				ractive.set("user", user);
 				console.log(user);
 			}

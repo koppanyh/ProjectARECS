@@ -316,7 +316,7 @@
 			ractive.set("isAdmin", userdict.admin);
 			console.log(userdict);
 			var wkday = (new Date()).getDay();
-			if(userdict.days[wkday] == undefined) ractive.set("estimhours", 3.14);
+			if(userdict.days[wkday] == undefined) ractive.set("estimhours", 8);
 			else ractive.set("estimhours", userdict.days[wkday][0]);
 		}
 		lock1 = true;

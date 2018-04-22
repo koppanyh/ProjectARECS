@@ -61,7 +61,7 @@
 		<div style="position: relative">
 			<img src="/userpics/{{user.picture}}" width="100" height="100"><br>
 			<div id="chpic">
-				<a href="" style="color: white; background-color: black">Change Picture</a>
+				<a href="" style="color: white; background-color: black" on-click="openfileup">Change Picture</a>
 			</div>
 		</div>
 	</div>
@@ -152,6 +152,19 @@
 		<div class="modal"></div>
 		<img src="/images/loading.gif" class="loading">
 	</div>
+	<div style="display: {{fileup}}">
+		<div class="modal" on-click="closefileup"></div>
+		<div class="uploadimg">
+			Upload image file<br>
+			<form method="POST" action="/account" enctype="multipart/form-data">
+				<input type="file" name="image"><br>
+				<input type="submit" value="Upload">
+				<input type="hidden" name="action" value="edituser">
+				<input type="hidden" name="tag" value="picture">
+				<input type="hidden" name="redir" value="/account/user.html">
+			</form>
+		</div>
+	</div>
 </script>
 
 <script>
@@ -185,6 +198,7 @@
 		template: '#template',
 		data: {
 			modla: "",
+			fileup: "none",
 			user: {
 				picture: "user.png",
 				fname: "Loading",
@@ -214,6 +228,14 @@
 			this.on("closemodal", function(event){
 				//this.set("modla", "none");
 			});
+			this.on("closefileup", function(event){
+				this.set("fileup", "none");
+			});
+			this.on("openfileup", function(event){
+				this.set("fileup", "");
+				return false;
+			});
+			
 			this.on("editestim", function(event){
 				var isedit = this.get("edithours")
 				this.set("edithours", !isedit);

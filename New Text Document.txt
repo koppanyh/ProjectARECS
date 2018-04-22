@@ -196,3 +196,8 @@ weekly goal was not met, firmware fix found to not be needed, worked on interfac
 new goal: get the rfid packets to actually work, work on interface, see about cron jobs
 
 https://en.wikipedia.org/wiki/Regular_expression
+
+https://www.npmjs.com/package/node-cron
+http://shiya.io/simple-file-upload-with-express-js-and-multer-in-node-js/
+https://github.com/expressjs/multer
+https://github.com/expressjs/multer/issues/114
