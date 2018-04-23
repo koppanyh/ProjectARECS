@@ -34,7 +34,7 @@ function addhours(hours, addi){
 
 function httpRequest(prot, url, parms, func){
 	var http = new XMLHttpRequest();
-	http.open(prot, url, true);
+	http.open((prot=="POSTIMG"?"POST":prot), url, true);
 	if(prot == "POST")
 		http.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
 	http.onreadystatechange = function(){

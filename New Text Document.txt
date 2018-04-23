@@ -201,3 +201,6 @@ https://www.npmjs.com/package/node-cron
 http://shiya.io/simple-file-upload-with-express-js-and-multer-in-node-js/
 https://github.com/expressjs/multer
 https://github.com/expressjs/multer/issues/114
+
+https://stackoverflow.com/questions/21023373/uploading-image-using-javascript
+http://researchhubs.com/post/computing/javascript/upload-files-with-ajax.html

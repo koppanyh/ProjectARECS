@@ -41,9 +41,13 @@ fs.readFile("db.key", function(err, dat){
 	}
 });
 
+var task1 = null;
+
 process.on("SIGINT", function(){
 	//add all cleanup code here
 	console.log();
+	task1.stop();
+	console.log("Cron job stopped");
 	if(pool) pool.end(function(err){
 		if(err) console.error(err);
 		console.log("MySQL pool closed");
@@ -88,7 +92,7 @@ function mysqlquery(query,params,func,name,err1,err2,err3){
 		if(err3) err3({"error":(name?name+": ":"")+"MySQL pool not initialized"});
 	}
 }
-cron.schedule('59 23 * * *', function(){
+task1 = cron.schedule('59 23 * * *', function(){
 	var dt = new Date();
 	console.log("Clocking out cron job running", dt);
 	var dat = dt.getFullYear()+"-";
@@ -183,13 +187,6 @@ app.post('/account', upload.single("image"), urlencodedParser, function(req, res
 		if(isLoggedIn(req)){
 			var dat = req.body; //action, uid, tag, value
 			if(["email","fname","lname","admin","wage","picture","rfid","passwd"].indexOf(dat.tag) >= 0){
-				/*if(dat.tag == "picture"){
-					//res.send('{"error": '+JSON.stringify(req.body)+'}');
-					req.session.user.picture = req.file.filename;
-					mysqlquery("UPDATE userdb SET picture=? WHERE uid=?");
-					res.redirect(dat.redir);
-					return;
-				}*/
 				var query = "";
 				var queryparms = [];
 				if(dat.tag == "passwd"){
@@ -199,6 +196,14 @@ app.post('/account', upload.single("image"), urlencodedParser, function(req, res
 					query = "UPDATE userdb SET hashpw=?, salt=? WHERE uid=?";
 					queryparms.push(hash.digest("hex"));
 					queryparms.push(salt);
+				} else if(dat.tag == "picture"){
+					if(req.file){
+						query = "UPDATE userdb SET picture=? WHERE uid=?";
+						queryparms.push(req.file.filename);
+					} else{
+						res.send('{"error":"No file was uploaded"}');
+						return;
+					}
 				} else{
 					query = "UPDATE userdb SET "+dat.tag+"=? WHERE uid=?";
 					queryparms.push(dat.value);
@@ -210,7 +215,11 @@ app.post('/account', upload.single("image"), urlencodedParser, function(req, res
 						return;
 					}
 					queryparms.push(dat.uid);
-				} else queryparms.push(req.session.user.uid);
+				} else{
+					queryparms.push(req.session.user.uid);
+					if(dat.tag == "picture") req.session.user.picture = req.file.filename;
+					//delete old files
+				}
 				var errfunc = function(inp){ res.send(JSON.stringify(inp)); };
 				mysqlquery(query,queryparms,function(result){
 					res.send(JSON.stringify(result));
@@ -490,11 +499,12 @@ function apiFunc(req, res){
 app.post('/api', urlencodedParser, function(req, res){ apiFunc(req, res); });
 app.get('/api', function(req, res){ apiFunc(Object.assign(req,{body:{}}), res); });
 
-/*app.post("/test", upload.single("test"), urlencodedParser, function(req, res){
+/*app.post("/test", upload.single("image"), urlencodedParser, function(req, res){
 	//console.log(req);
 	console.log(req.body);
-	console.log(req.file.filename);
-	res.redirect("/account/user.html");
+	console.log(req.file);
+	//res.redirect("/account/user.html");
+	res.send(JSON.stringify(req.file));
 });*/
 
 server = app.listen(8080, function () {

@@ -155,14 +155,13 @@
 	<div style="display: {{fileup}}">
 		<div class="modal" on-click="closefileup"></div>
 		<div class="uploadimg">
-			Upload image file<br>
-			<form method="POST" action="/account" enctype="multipart/form-data">
+			Upload image file<br><br>
+			<form id="imgform">
 				<input type="file" name="image"><br>
-				<input type="submit" value="Upload">
 				<input type="hidden" name="action" value="edituser">
 				<input type="hidden" name="tag" value="picture">
-				<input type="hidden" name="redir" value="/account/user.html">
 			</form>
+			<button on-click="updateimg">Upload</button>
 		</div>
 	</div>
 </script>
@@ -236,6 +235,17 @@
 				return false;
 			});
 			
+			this.on("updateimg", function(event){
+				this.set("fileup", "none");
+				this.set("modla", "");
+				var fdat = new FormData(document.getElementById("imgform"));
+				httpRequest("POSTIMG","/account",fdat,function(http){
+					var res = JSON.parse(http.responseText);
+					checkError(res);
+					console.log(res);
+					ractive.set("modla","none");
+				});
+			});
 			this.on("editestim", function(event){
 				var isedit = this.get("edithours")
 				this.set("edithours", !isedit);

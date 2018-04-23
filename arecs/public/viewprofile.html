@@ -39,7 +39,7 @@
 		<div style="position: relative; display: inline-block">
 			<img src="/userpics/{{user.picture}}" width="100" height="100"><br>
 			<div id="chpic">
-				<a href="" style="color: white; background-color: black">Change Picture</a>
+				<a href="" style="color: white; background-color: black" on-click="openfileup">Change Picture</a>
 			</div>
 		</div>
 		<div style="display: inline-block; margin-left: 10px">
@@ -95,6 +95,19 @@
 		<div class="modal"></div>
 		<img src="images/loading.gif" class="loading">
 	</div>
+	<div style="display: {{fileup}}">
+		<div class="modal" on-click="closefileup"></div>
+		<div class="uploadimg">
+			Upload image file<br><br>
+			<form id="imgform">
+				<input type="file" name="image"><br>
+				<input type="hidden" name="action" value="edituser">
+				<input type="hidden" name="tag" value="picture">
+				<input type="hidden" name="uid" value="{{user.uid}}">
+			</form>
+			<button on-click="updateimg">Upload</button>
+		</div>
+	</div>
 </script>
 
 <script>
@@ -131,6 +144,7 @@
 		template: '#template',
 		data: {
 			modla: "",
+			fileup: "none",
 			ppic: "user.png",
 			user: {picture: "user.png", fname: "Loading",
 				lname: "Loading", email: "Loading",
@@ -141,7 +155,25 @@
 			this.on("closemodal", function(event){
 				//this.set("modla", "none");
 			});
+			this.on("closefileup", function(event){
+				this.set("fileup", "none");
+			});
+			this.on("openfileup", function(event){
+				this.set("fileup", "");
+				return false;
+			});
 			
+			this.on("updateimg", function(event){
+				this.set("fileup", "none");
+				this.set("modla", "");
+				var fdat = new FormData(document.getElementById("imgform"));
+				httpRequest("POSTIMG","/account",fdat,function(http){
+					var res = JSON.parse(http.responseText);
+					checkError(res);
+					console.log(res);
+					ractive.set("modla","none");
+				});
+			});
 			this.on("editfname", function(event){
 				if(!this.get("efname")){
 					pushedit1();
