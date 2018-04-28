@@ -34,17 +34,44 @@
 	<div style="padding: 5px">
 		Pay Period: <input type="date" value="{{pstart}}"> to <input type="date" value="{{pend}}">
 		<button on-click="money">Update</button><br>
-		<!--button>Export Financial Data</button>
+		<!--label>Include Work Descriptions<input type="checkbox"></label>
+		&nbsp;&nbsp;Sort By <select>
+			<option>Employee</option>
+			<option>Day</option>
+		</select><br-->
+		<button on-click="gentable">Generate Table View</button>
+		<!--button on-click="genchart">Generate Chart View</button-->
+		<button on-click="hidegens">Hide View</button>
 	</div>
 	
-	<div>
-		Graph of employee work-->
+	<div style="padding: 5px; display: {{#if tableview}}block{{else}}none{{/if}}">
+		<table id="table" border="1">
+			<tr>
+				<th>Employee</th>
+				<th>Day</th>
+				<th>Hours</th>
+				<th>Start</th>
+				<th>End</th>
+			</tr>
+			{{#each .works}}<tr>
+				<td>{{eids[.uid]}}</td>
+				<td>{{.day}}</td>
+				<td>{{.hours}}</td>
+				<td>{{.tstart}}</td>
+				<td>{{.tend}}</td>
+			</tr>{{/each}}
+		</table><br>
+		<button on-click="downchart">Download as CSV</button>
+	</div>
+	<div style="padding: 5px; display: {{#if chartview}}block{{else}}none{{/if}}">
+		Graph of employee work for today<br>
+		Graph of employee work for pay period
 	</div>
 	
 	<div style="text-align: center">
 		<b>Employees</b><br>
 		{{#each employees}}
-		<a href="/viewprofile.html?id={{uid}}"><div class="card"
+		<a href="/viewprofile.html?uid={{uid}}"><div class="card"
 			style="background-color: {{#if isclocked[uid]}}#DFD{{else}}#FDD{{/if}}">
 			<img src="/userpics/{{picture}}" style="height: 100px; border-radius: 4px"><br>
 			{{lname}}, {{fname}}<br>
@@ -67,20 +94,48 @@
 	var userdict = {};
 	var lastweek = new Date();
 	lastweek.setTime(lastweek.getTime() - 13*24*3600*1000);
+	var hourslist = [];
+	
+	function downloadchart(){
+		var tbtxt = document.getElementById("table").innerHTML;
+		tbtxt = tbtxt.replace(/<th>/g,"<td>").replace(/<\/th>/g,"</td>");
+		tbtxt = tbtxt.replace(/<\/tr>/g, "").split("<tr>");
+		tbtxt.shift();
+		tbtxt = tbtxt.map(function(itm){
+			itm = itm.replace(/<\/td>\s*/g,"").split("<td>");
+			itm.shift();
+			if(itm[0] != "") itm[0] = JSON.stringify(itm[0]);
+			itm = itm.join(",")
+			return itm;
+		});
+		tbtxt = tbtxt.join("\n");
+		var element = document.createElement('a');
+		element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(tbtxt));
+		element.setAttribute('download', 'report.csv');
+		element.style.display = 'none';
+		document.body.appendChild(element);
+		element.click();
+		document.body.removeChild(element);
+	}
 	
 	var ractive = new Ractive({
 		target: '#body',
 		template: '#template',
 		data: {
 			modla: "",
+			ishelp: "none",
 			isAdmin: false,
 			ppic: "user.png",
 			employees: [{picture: "user.png", fname: "Loading",
 				lname: "Loading", email: "Loading", uid: 0, wage: 0}],
 			hours: {}, //[uid]: 0
+			eids: {}, //[uid]: "name"
 			pstart: getdate(lastweek),
 			pend: getdate(),
-			isclocked: {}
+			isclocked: {},
+			tableview: false,
+			chartview: false,
+			works: []
 		},
 		oninit: function(){
 			this.on("closemodal", function(event){
@@ -96,7 +151,12 @@
 					result.forEach(function(itm){
 						if(itm.uid in hrs) hrs[itm.uid] += itm.hours;
 						else hrs[itm.uid] = itm.hours;
+						itm.day = trimdate(itm.day);
+						itm.tstart = trimtime(itm.tstart);
+						if(itm.tend) itm.tend = trimtime(itm.tend);
+						itm.hours = itm.hours;
 					});
+					hourslist = result;
 					ractive.set("hours", hrs);
 					ractive.set("modla", "none");
 					console.log("Hours", result, hrs);
@@ -114,15 +174,56 @@
 				}
 				return false;
 			});
+			this.on("gentable", function(event){
+				console.log("Generating table view");
+				var works = [];
+				var eids = JSON.parse(JSON.stringify(this.get("eids")));
+				Object.keys(eids).forEach(function(itm){
+					eids[itm] = [];
+				});
+				hourslist.forEach(function(itm){
+					eids[itm.uid].push(JSON.parse(JSON.stringify(itm)));
+				});
+				this.get("employees").forEach(function(itm){
+					var tmp = eids[itm.uid];
+					if(tmp.length > 0){
+						var hrs = tmp[0].hours;
+						for(var i=1; i<tmp.length; i++){
+							tmp[i].uid = 0;
+							hrs += tmp[i].hours;
+						}
+						tmp.push({hours: "Total: " + hrs.toFixed(2)});
+					} else{
+						tmp.push({uid: itm.uid, hours: "Total: 0"});
+					}
+					works = works.concat(tmp);
+				});
+				this.set({
+					chartview: false,
+					tableview: true,
+					works: works
+				});
+				console.log(works);
+			});
+			this.on("genchart", function(event){
+				console.log("Generating chart view");
+				this.set({tableview: false, chartview: true});
+			});
+			this.on("hidegens", function(event){
+				this.set({tableview: false, chartview: false});
+			});
+			this.on("downchart", function(){
+				downloadchart();
+			});
 		},
 	});
 	
 	var lock1 = false;
 	httpRequest("POST","/account","action=getuser",function(http){
-		if(http.responseText == "") document.location = "/account";
+		if(http.responseText == "") document.location = "/account/logout";
 		else{
 			userdict = JSON.parse(http.responseText);
-			checkError(userdict);
+			if(checkError(userdict)) document.location = "/account/logout";
 			if(!userdict.admin) document.location = "/account";
 			else{
 				ractive.set("ppic", userdict.picture);
@@ -143,6 +244,11 @@
 				ractive.set("employees[0].fname", "Database");
 				ractive.set("employees[0].lname", "Error");
 			} else{
+				var eids = {};
+				employees.forEach(function(itm){
+					eids[itm.uid] = itm.lname + ", " + itm.fname;
+				});
+				ractive.set("eids", eids);
 				employees.sort(function(a,b){
 					a = a.lname + " " + a.fname;
 					b = b.lname + " " + b.fname;
@@ -151,7 +257,7 @@
 					return 0;
 				});
 				ractive.set("employees", employees);
-				console.log("Employees", employees);
+				console.log("Employees", employees, eids);
 			}
 		}
 		lock2 = true;
@@ -164,7 +270,7 @@
 				if(itm.tend == null) clocked[itm.uid] = true;
 			});
 			ractive.set("isclocked", clocked);
-			console.log("OUTPUT:", result, clocked);
+			console.log("Clocked users:", result, clocked);
 			lock4 = true;
 		});
 	});
@@ -177,8 +283,13 @@
 		result.forEach(function(itm){
 			if(itm.uid in hrs) hrs[itm.uid] += itm.hours;
 			else hrs[itm.uid] = itm.hours;
+			itm.day = trimdate(itm.day);
+			itm.tstart = trimtime(itm.tstart);
+			if(itm.tend) itm.tend = trimtime(itm.tend);
+			itm.hours = itm.hours;
 		});
 		ractive.set("hours", hrs);
+		hourslist = result;
 		console.log("Hours", result, hrs);
 		lock3 = true;
 	});

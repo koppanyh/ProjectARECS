@@ -308,10 +308,10 @@
 	
 	var lock1 = false;
 	httpRequest("POST","/account","action=getuser",function(http){
-		if(http.responseText == "") document.location = "/account";
+		if(http.responseText == "") document.location = "/account/logout";
 		else{
 			userdict = JSON.parse(http.responseText);
-			checkError(userdict);
+			if(checkError(userdict)) document.location = "/account/logout";
 			ractive.set("ppic", userdict.picture);
 			ractive.set("isAdmin", userdict.admin);
 			console.log(userdict);
@@ -348,7 +348,7 @@
 				ans = ans[0];
 				did = ans.did;
 				ractive.set("clocked", true);
-				var t = ans.tstart.split(":").slice(0,2).join(":");
+				var t = trimtime(ans.tstart);
 				ractive.set("clockintime", t);
 				if(ans.hours > 0) ractive.set("estimhours", ans.hours);
 				t = addhours(t, ractive.get("estimhours"));
@@ -359,8 +359,8 @@
 						var ans = JSON.parse(http.responseText);
 						checkError(ans);
 						ans = ans.map(function(itm){
-							itm.tstart = itm.tstart.split(":").slice(0,2).join(":");
-							itm.tend = itm.tend.split(":").slice(0,2).join(":");
+							itm.tstart = trimtime(itm.tstart);
+							itm.tend = trimtime(itm.tend);
 							return itm;
 						});
 						console.log("Works:", ans);

@@ -19,6 +19,12 @@ function getdate(dt){
 	dat += (dt.getDate()<=9?"0":"") + dt.getDate();
 	return dat;
 }
+function trimtime(tm){
+	return tm.split(":").slice(0,2).join(":");
+}
+function trimdate(dt){
+	return dt.split("T")[0];
+}
 	
 function addhours(hours, addi){
 	var tm = new Date();

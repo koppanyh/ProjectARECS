@@ -134,7 +134,7 @@
 					{{#if .estart}}<input type="time" value="{{.start}}">
 					{{else}}{{.start}}{{/if}}
 				</td>
-				<td on-click="editend" style="min-width: 4em">{{.end}}</td>
+				<td style="min-width: 4em">{{.end}}</td>
 				<td on-click="edithours" class="editable" style="min-width: 4em">
 					{{#if .ehours}}<input type="number" value="{{.hours}}">
 					{{else}}{{.hours}}{{/if}}
@@ -313,7 +313,7 @@
 						resp.forEach(function(itm){
 							if(itm.did > mmax) mmax = itm.did;
 							if(itm.did < mmin) mmin = itm.did;
-							dates[itm.did] = itm.day.split("T")[0];
+							dates[itm.did] = trimdate(itm.day);
 						});
 						req = "fromdid="+mmin+"&todid="+mmax;
 						httpRequest("GET","/api?action=getworks&"+req,"",function(http){
@@ -321,8 +321,8 @@
 							checkError(pser);
 							pser = pser.map(function(itm){
 								itm.date = dates[itm.did];
-								itm.tstart = itm.tstart.split(":").slice(0,2).join(":");
-								itm.tend = itm.tend.split(":").slice(0,2).join(":");
+								itm.tstart = trimtime(itm.tstart);
+								itm.tend = trimtime(itm.tend);
 								return itm;
 							});
 							ractive.set("historical", pser);
@@ -366,7 +366,7 @@
 			"lineAlpha": 1,
 			"lineColor": "#fff",
 			"fillAlphas": 0.85,
-			"balloonText": "<b>[[task]]</b>:<br>[[start]] - [[end]]"
+			"balloonText": "<b>[[task]]</b><br>[[start]] - [[end]]"
 		},
 		"rotate": true,
 		"categoryField": "day",
@@ -399,10 +399,10 @@
 	
 	var lock1 = false;
 	httpRequest("POST","/account","action=getuser",function(http){
-		if(http.responseText == "") document.location = "/account";
+		if(http.responseText == "") document.location = "/account/logout";
 		else{
 			userdict = JSON.parse(http.responseText);
-			checkError(userdict);
+			if(checkError(userdict)) document.location = "/account/logout";
 			ractive.set("user", userdict);
 			for(var i=0; i<7; i++){
 				if(userdict.days[i] != undefined){
@@ -441,7 +441,7 @@
 			checkError(days);
 			days = days.map(function(itm){
 				var t = new Date(itm.day);
-				itm.day = itm.day.split("T")[0];
+				itm.day = trimdate(itm.day);
 				itm.wkday = t.getDay();
 				return itm;
 			});
@@ -455,8 +455,8 @@
 							var day = days.find(function(mti){ return mti.did == itm.did; })
 							itm.date = day.day;
 							itm.wkday = day.wkday;
-							itm.tstart = itm.tstart.split(":").slice(0,2).join(":");
-							itm.tend = itm.tend.split(":").slice(0,2).join(":");
+							itm.tstart = trimtime(itm.tstart);
+							itm.tend = trimtime(itm.tend);
 							return itm;
 						});
 						ractive.set("thisweek", ans);
@@ -473,15 +473,15 @@
 							var dayfind = days.find(function(itm){ return itm.wkday == i; });
 							if(dayfind){
 								work.push({
-									"start": dayfind.tstart.split(":").slice(0,2).join(":"),
-									"end": (dayfind.tend ? dayfind.tend.split(":").slice(0,2).join(":") : gettime()),
+									"start": trimtime(dayfind.tstart),
+									"end": (dayfind.tend ? trimtime(dayfind.tend) : gettime()),
 									"color": backcol,
 									"task": dayname
 								});
 								ans.forEach(function(itm){
 									if(itm.wkday == i) work.push({
-										"start": itm.tstart.split(":").slice(0,2).join(":"),
-										"end": itm.tend.split(":").slice(0,2).join(":"),
+										"start": trimtime(itm.tstart),
+										"end": trimtime(itm.tend),
 										"color": forecol,
 										"task": itm.description
 									});

@@ -8,6 +8,14 @@
 		<link rel="stylesheet" type="text/css" href="/style.css">
 		<script type="text/javascript" src="/ractive.js"></script>
 		<script type="text/javascript" src="/core.js"></script>
+		
+		<script src="/amCharts/amcharts.js"></script>
+		<script src="/amCharts/serial.js"></script>
+		<script src="/amCharts/gantt.js"></script>
+		<script src="/amCharts/plugins/export/export.min.js"></script>
+		<link rel="stylesheet" href="/amCharts/plugins/export/export.css" type="text/css" media="all" />
+		<script src="/amCharts/themes/light.js"></script>
+		
 		<style>
 			#chpic {
 				background-color: rgba(50,50,50,0.5);
@@ -67,7 +75,7 @@
 				RFID:
 				{{#if erfid}}<input type="text" value="{{user.rfid}}">{{else}}{{user.rfid}}{{/if}}
 			</div>
-			<div class="editable" on-click="editadmin">
+			<div {{#if adminid != user.uid}}class="editable" on-click="editadmin"{{/if}}>
 				Admin:
 				{{#if eadmin}}<select value="{{user.admin}}">
 					<option value="0">No</option>
@@ -83,12 +91,79 @@
 		<button on-click="doneedit">Save Changes</button>
 		{{/if}}<br>
 		
-		<p>Clock Times</p>
-		<p>Works</p>
-		<p>Estimated Times: {{user.days}}</p>
+		<div id="graph" style="width: 100%; height: 500px"></div><br>
+		
+		<div style="text-align: center">
+			<b>Historical hours:<br>
+			<input type="date" value="{{hstart}}"> to <input type="date" value="{{hend}}">
+			<button on-click="history">Search</button></b><br>
+			<!-- add project filter here -->
+			<table border="1">
+				{{#if .historical.length > 0}}<tr>
+					<th>Day</th>
+					<th>Start</th>
+					<th>End</th>
+					<th>Project</th>
+					<th>Descrption</th>
+				</tr>{{/if}}
+				{{#each .historical}}<tr>
+					<td {{#if .day}}class="editable" on-click="editday"{{/if}} style="min-width: 6em">{{.day}}</td>
+					<td class="editable" on-click="edithstart" style="min-width: 4em">{{.tstart}}</td>
+					<td class="editable" on-click="edithend" style="min-width: 4em">{{.tend}}</td>
+					<td {{#if !.day}}class="editable" on-click="editproj"{{/if}} style="min-width: 6em">{{projs2[.pid]}}</td>
+					<td {{#if !.day}}class="editable" on-click="editdesc"{{/if}} style="width: 100%; text-align: left">{{.description}}</td>
+				</tr>{{else}}<tr><td>No Work Yet</td></tr>{{/each}}
+			</table><br>
+			{{#if currentedit3 != null}}
+			<button on-click="canceledit3">Cancel</button>
+			<button on-click="doneedit3">Save Changes</button><br>
+			{{/if}}<br>
+		
+			<b>Estimated daily times:</b><br>
+			<table border="1">
+				<tr>
+					<th>Weekday</th>
+					<th>Avg. Start Time</th>
+					<th>Avg. End Time</th>
+					<th>Avg. Hours</th>
+				</tr>
+				{{#each .estimate}}<tr>
+					<td style="min-width: 4em">{{.day}}</td>
+					<td on-click="editstart" class="editable" style="min-width: 4em">
+						{{#if .estart}}<input type="time" value="{{.start}}">
+						{{else}}{{.start}}{{/if}}
+					</td>
+					<td style="min-width: 4em">{{.end}}</td>
+					<td on-click="edithours" class="editable" style="min-width: 4em">
+						{{#if .ehours}}<input type="number" value="{{.hours}}">
+						{{else}}{{.hours}}{{/if}}
+					</td>
+				</tr>{{/each}}
+			</table><br>
+			{{#if currentedit2 != null}}
+			<button on-click="canceledit2">Cancel</button>
+			<button on-click="doneedit2">Save Changes</button><br>
+			{{/if}}<br>
+			
+			<b>RFID Scans Today</b><br>
+			<table border="1">
+				{{#if .rfids.length > 0}}
+				<tr>
+					<th>Node</th>
+					<th>Day</th>
+					<th>Time</th>
+				</tr>
+				{{#each .rfids}}<tr>
+					<td>{{scanners[.sid].name}}</td>
+					<td>{{.day}}</td>
+					<td>{{.time}}</td>
+				</tr>{{/each}}
+				{{else}}<tr><td>None</td></tr>{{/if}}
+			</table>
+		</div><br>
 		
 		<button on-click="setpass">Set Password</button><br><br>
-		<button on-click="deleteuser">Delete User</button>
+		{{#if adminid != user.uid}}<button on-click="deleteuser">Delete User</button>{{/if}}
 	</div>
 	
 	<div on-click="closemodal" style="display: {{modla}}">
@@ -113,6 +188,7 @@
 <script>
 	var userdict = {};
 	var ractive = null;
+	var uid = 0;
 	
 	function pushedit1(){
 		var curedit = ractive.get("currentedit1");
@@ -126,8 +202,7 @@
 				curedit.wage = ractive.get("user.wage");
 				curedit.value = curedit.wage * (1 * ractive.get("user.wagetype"));
 			} else curedit.value = ractive.get("user." + curedit.tag);
-			req += "&uid=" + ractive.get("user.uid");
-			req += "&tag=" + curedit.tag;
+			req += "&uid=" + uid + "&tag=" + curedit.tag;
 			req += "&value=" + encodeURIComponent(curedit.value);
 			console.log(curedit, req);
 			httpRequest("POST","/account",req,function(http){
@@ -138,6 +213,33 @@
 			});
 		}
 	}
+	function pushedit2(){
+		var cedit = ractive.get("currentedit2");
+		if(cedit != null){
+			ractive.set("modla", "");
+			ractive.set("currentedit2", null);
+			cedit.value = ractive.get("estimate["+cedit.indx+"]."+cedit.tag);
+			ractive.set("estimate["+cedit.indx+"].e"+cedit.tag, undefined);
+			var req = "&day="+cedit.indx+"&tag="+cedit.tag+"&uid="+uid;
+			req += "&value="+encodeURIComponent(cedit.value);
+			httpRequest("POST","/account","action=updateestim"+req,function(http){
+				var res = JSON.parse(http.responseText);
+				checkError(res);
+				console.log("OUTPUT: ", res);
+				ractive.set("modla", "none");
+			});
+			var row = ractive.get("estimate["+cedit.indx+"]");
+			ractive.set("estimate["+cedit.indx+"].end", addhours(row.start, row.hours));
+			console.log("Pushing to server", cedit);
+		}
+	}
+	function pushedit3(){
+		var cedit = ractive.get("currentedit3");
+		if(cedit != null){
+			console.log(cedit);
+			ractive.set("currentedit3", null);
+		}
+	}
 	
 	ractive = new Ractive({
 		target: '#body',
@@ -146,10 +248,27 @@
 			modla: "",
 			fileup: "none",
 			ppic: "user.png",
+			adminid: 0,
 			user: {picture: "user.png", fname: "Loading",
 				lname: "Loading", email: "Loading",
-				wage: "Loading", rfid: "Loading"},
-			currentedit1: null //{tag, org}
+				wage: 0, rfid: "Loading"},
+			currentedit1: null, //{tag, org}
+			currentedit2: null,
+			currentedit3: null,
+			rfids: [],
+			scanners: [],
+			estimate: [
+				{day: "Sunday",    indx: 0, hours: 8, start: "09:00", end: "17:00"},
+				{day: "Monday",    indx: 1, hours: 8, start: "09:00", end: "17:00"},
+				{day: "Tuesday",   indx: 2, hours: 8, start: "09:00", end: "17:00"},
+				{day: "Wednesday", indx: 3, hours: 8, start: "09:00", end: "17:00"},
+				{day: "Thursday",  indx: 4, hours: 8, start: "09:00", end: "17:00"},
+				{day: "Friday",    indx: 5, hours: 8, start: "09:00", end: "17:00"},
+				{day: "Saturday",  indx: 6, hours: 8, start: "09:00", end: "17:00"}
+			],
+			historical: [],
+			projs: [],
+			projs2: []
 		},
 		oninit: function(){
 			this.on("closemodal", function(event){
@@ -235,13 +354,130 @@
 				pushedit1();
 			});
 			
+			this.on("history", function(event){
+				this.set("modla", "");
+				var hstart = this.get("hstart");
+				var hend = this.get("hend");
+				httpRequest("GET","/api?action=getclocks&notjustnull&uid="+uid+"&fromday="+hstart+"&today="+hend,"",function(http){
+					var res = JSON.parse(http.responseText);
+					checkError(res);
+					if(res.length > 0){
+						res = res.map(function(itm){
+							var t = new Date(itm.day);
+							itm.wkday = t.getDay();
+							itm.day = trimdate(itm.day);
+							itm.tstart = trimtime(itm.tstart);
+							if(itm.tend) itm.tend = trimtime(itm.tend);
+							return itm;
+						});
+						httpRequest("GET","/api?action=getworks&uid="+uid+"&fromdid="+res[0].did+"&todid="+res[res.length-1].did,"",function(http){
+							var res2 = JSON.parse(http.responseText);
+							checkError(res2);
+							res2 = res2.map(function(itm){
+								itm.tend = trimtime(itm.tend);
+								itm.tstart = trimtime(itm.tstart);
+								return itm;
+							});
+							var works = [];
+							res.forEach(function(itm){
+								itm.description = itm.hours.toFixed(2) + " hours";
+								works.push(itm);
+								res2.forEach(function(mti){
+									if(mti.did == itm.did) works.push(mti);
+								});
+							});
+							ractive.set("historical", works);
+							console.log("Works:", res2);
+							console.log("Clocks and works:", works);
+							ractive.set("modla", "none");
+						});
+					} else ractive.set("modla", "none");
+					console.log("Clocks:", res);
+				});
+			});
+			this.on("editday", function(event){ //did only
+				var a = event.get();
+				if(!a.eday){
+					pushedit3();
+					this.set("currentedit3", {did: a.did, tag: "day", orig: a.day});
+					event.set("eday", true);
+				}
+				console.log(event.get());
+			});
+			this.on("edithstart", function(event){ //did and wid
+				var a = event.get();
+				if(!a.estart){
+					pushedit3();
+					this.set("currentedit3", {});
+					event.set("estart", true);
+				}
+				console.log(event.get());
+			});
+			this.on("edithend", function(event){ //did and wid
+				var a = event.get();
+				if(!a.eend){
+					pushedit3();
+					this.set("currentedit3", {});
+					event.set("eend", true);
+				}
+				console.log(event.get());
+			});
+			this.on("editproj", function(event){ //wid only
+				var a = event.get();
+				if(!a.epid){
+					pushedit3();
+					this.set("currentedit3", {wid: a.wid, tag: "pid", orig: a.pid});
+					event.set("epid", true);
+				}
+				console.log(event.get());
+			});
+			this.on("editdesc", function(event){ //wid only
+				var a = event.get();
+				if(!a.edescription){
+					pushedit3();
+					this.set("currentedit3", {wid: a.wid, tag: "description", orig: a.description});
+					event.set("edescription", true);
+				}
+				console.log(event.get());
+			});
+			this.on("canceledit3", function(event){
+			});
+			this.on("doneedit3", function(event){
+			});
+			
+			this.on("editstart", function(event){
+				var a = event.get();
+				if(!a.estart){
+					pushedit2();
+					this.set("currentedit2", {indx: a.indx, tag: "start", orig: a.start});
+					event.set("estart", true);
+				}
+			});
+			this.on("edithours", function(event){
+				var a = event.get();
+				if(!a.ehours){
+					pushedit2();
+					this.set("currentedit2", {indx: a.indx, tag: "hours", orig: a.hours});
+					event.set("ehours", true);
+				}
+			});
+			this.on("canceledit2", function(event){
+				var cedit = this.get("currentedit2");
+				this.set("estimate["+cedit.indx+"].e"+cedit.tag, undefined);
+				this.set("estimate["+cedit.indx+"]."+cedit.tag, cedit.orig);
+				this.set("currentedit2", null);
+			});
+			this.on("doneedit2", function(event){
+				pushedit2();
+			});
+			
 			this.on("setpass", function(event){
 				var pass1 = prompt("Enter password");
 				if(pass1 != null){
 					var pass2 = prompt("Confirm password");
 					if(pass1 == pass2){
 						this.set("modla","");
-						var req = "action=edituser&uid="+this.get("user.uid");
+						var req = "action=edituser&uid="+uid;
 						req += "&tag=passwd&value="+encodeURIComponent(pass1);
 						httpRequest("POST","/account",req,function(http){
 							var result = JSON.parse(http.responseText);
@@ -253,9 +489,9 @@
 				}
 			});
 			this.on("deleteuser", function(event){
-				if(confirm("Do you really want to delete user "+this.get("user.fname")+" "+this.get("user.lname"))){
+				if(confirm("Do you really want to delete user "+this.get("user.fname")+" "+this.get("user.lname")+" and all associated data?")){
 					this.set("modla","");
-					httpRequest("POST","/account","action=deleteuser&uid="+this.get("user.uid"),function(http){
+					httpRequest("POST","/account","action=deleteuser&uid="+uid,function(http){
 						var result = JSON.parse(http.responseText);
 						checkError(result);
 						console.log("Delete", result);
@@ -269,27 +505,28 @@
 	
 	var lock1 = false;
 	httpRequest("POST","/account","action=getuser",function(http){
-		if(http.responseText == "") document.location = "/account";
+		if(http.responseText == "") document.location = "/account/logout";
 		else{
 			userdict = JSON.parse(http.responseText);
-			checkError(userdict);
+			if(checkError(userdict)) document.location = "/account/logout";
 			if(!userdict.admin) document.location = "/account";
 			else{
 				ractive.set("ppic", userdict.picture);
+				ractive.set("adminid", userdict.uid);
 				console.log(userdict);
 			}
 		}
 		lock1 = true;
 	});
 	
-	var r = /\W(id=\d+)/.exec(document.location.search);
-	if(r == null){
+	uid = /\W(uid=\d+)/.exec(document.location.search);
+	if(uid == null){
 		alert("Invalid search query: " + document.location.search);
 		document.location = "/users.html";
-	} else r = r[1].split("=")[1];
+	} else uid = uid[1].split("=")[1];
 	
 	var lock2 = false;
-	httpRequest("POST","/account","action=getuser&uid="+r,function(http){
+	httpRequest("POST","/account","action=getuser&uid="+uid,function(http){
 		if(http.responseText != ""){
 			var user = JSON.parse(http.responseText);
 			if(checkError(user)) document.location = "/users.html";
@@ -298,6 +535,13 @@
 					user.wagetype = -1;
 					user.wage = Math.abs(user.wage);
 				} else user.wagetype = 1;
+				for(var i=0; i<7; i++){
+					if(user.days[i] != undefined){
+						ractive.set("estimate["+i+"].hours", user.days[i][0]);
+						ractive.set("estimate["+i+"].start", user.days[i][1]);
+						ractive.set("estimate["+i+"].end", addhours(user.days[i][1], user.days[i][0]));
+					}
+				}
 				ractive.set("user", user);
 				console.log(user);
 			}
@@ -305,8 +549,177 @@
 		lock2 = true;
 	});
 	
+	var chart = AmCharts.makeChart( "graph", {
+		"type": "gantt",
+		"theme": "light",
+		"marginRight": 70,
+		"period": "mm",
+		"dataDateFormat": "JJ:NN",
+		"columnWidth": 0.5,
+		"valueAxis": { "type": "date" },
+		"brightnessStep": 3,
+		"titles": [{
+			"text": "This week's work",
+			"size": 15
+		}],
+		"graph": {
+			"fillAlphas": 1,
+			"lineAlpha": 1,
+			"lineColor": "#fff",
+			"fillAlphas": 0.85,
+			"balloonText": "<b>[[task]]</b><br>[[start]] - [[end]]"
+		},
+		"rotate": true,
+		"categoryField": "day",
+		"segmentsField": "work",
+		"colorField": "color",
+		"startDateField": "start",
+		"endDateField": "end",
+		"dataProvider": [
+			{"day": "Sunday", "work": []},
+			{"day": "Monday", "work": []},
+			{"day": "Tuesday", "work": []},
+			{"day": "Wednesday", "work": []},
+			{"day": "Thursday", "work": []},
+			{"day": "Friday", "work": []},
+			{"day": "Saturday", "work": []},
+		],
+		"valueScrollbar": { "autoGridCount": true },
+		"chartCursor": {
+			"cursorColor": "#55bb76",
+			"valueBalloonsEnabled": false,
+			"cursorAlpha": 0,
+			"valueLineAlpha": 0.5,
+			"valueLineBalloonEnabled": true,
+			"valueLineEnabled": true,
+			"zoomable": false,
+			"valueZoomable": true
+		},
+		//"export": { "enabled": true }
+	});
+	
+	var lock5 = false;
+	var lock6 = false;
+	httpRequest("GET","/api?action=getclocks&notjustnull&week="+getdate()+"&uid="+uid,"",function(http){
+		var res = JSON.parse(http.responseText);
+		checkError(res);
+		if(res.length > 0){
+			res = res.map(function(itm){
+				var t = new Date(itm.day);
+				itm.wkday = t.getDay();
+				itm.day = trimdate(itm.day);
+				itm.tstart = trimtime(itm.tstart);
+				if(itm.tend) itm.tend = trimtime(itm.tend);
+				return itm;
+			});
+			ractive.set({hstart: res[0].day, hend: res[res.length-1].day});
+			httpRequest("GET","/api?action=getworks&uid="+uid+"&fromdid="+res[0].did+"&todid="+res[res.length-1].did,"",function(http){
+				var res2 = JSON.parse(http.responseText);
+				checkError(res2);
+				res2 = res2.map(function(itm){
+					itm.tend = trimtime(itm.tend);
+					itm.tstart = trimtime(itm.tstart);
+					return itm;
+				});
+				var works = [];
+				res.forEach(function(itm){
+					itm.description = itm.hours.toFixed(2) + " hours";
+					works.push(itm);
+					res2.forEach(function(mti){
+						if(mti.did == itm.did) works.push(mti);
+					});
+				});
+				ractive.set("historical", works);
+				var dp = [
+					{"day": "Sunday",    "work": []},
+					{"day": "Monday",    "work": []},
+					{"day": "Tuesday",   "work": []},
+					{"day": "Wednesday", "work": []},
+					{"day": "Thursday",  "work": []},
+					{"day": "Friday",    "work": []},
+					{"day": "Saturday",  "work": []},
+				];
+				var colors = [
+					"ffaaaa","880000",
+					"aaffaa","008800",
+					"aaaaff","000088",
+					"ffaaaa","880000",
+					"aaffaa","008800",
+					"aaaaff","000088",
+					"ffaaaa","880000"
+				];
+				var backcol = colors[0];
+				var forecol = colors[1];
+				var wkday = 0;
+				works.forEach(function(itm){
+					if("wkday" in itm){
+						wkday = itm.wkday;
+						backcol = colors[wkday * 2];
+						forecol = colors[wkday * 2 + 1];
+					}
+					dp[wkday].work.push({
+						"start": itm.tstart,
+						"end": (itm.tend ? itm.tend : gettime()),
+						"color": ("wkday" in itm ? backcol : forecol),
+						"task": ("wkday" in itm ? dp[wkday].day+" - " : "") + itm.description
+					});
+				});
+				chart.dataProvider = dp;
+				chart.validateData();
+				console.log("Works:", res2);
+				console.log("Clock/works:", works);
+				lock6 = true;
+			});
+		} else lock6 = true;
+		console.log("Clocks:", res);
+		lock5 = true;
+	});
+	
+	var lock3 = false;
+	httpRequest("GET","/api?action=getrfidevents&uid="+uid+"&day="+getdate(),"",function(http){
+		var resp = JSON.parse(http.responseText);
+		checkError(resp);
+		resp = resp.map(function(itm){
+			itm.day = trimdate(itm.day);
+			itm.time = trimtime(itm.time);
+			return itm;
+		});
+		ractive.set("rfids", resp);
+		console.log("RFIDS", resp);
+		lock3 = true;
+	});
+	
+	var lock4 = false;
+	httpRequest("GET","/api?action=getscanners&noloc","",function(http){
+		var resp = JSON.parse(http.responseText);
+		checkError(resp);
+		var scnrs = {};
+		resp.forEach(function(itm){
+			scnrs[itm.sid] = itm;
+		});
+		ractive.set("scanners", scnrs);
+		console.log("Scanners", scnrs);
+		lock4 = true;
+	});
+	
+	var lock7 = false;
+	httpRequest("GET","/api?action=getprojs&nodesc","",function(http){
+		if(http.responseText != ""){
+			var pjs = JSON.parse(http.responseText);
+			checkError(pjs);
+			pjs.unshift({pid: 0, title: "None", active: 1});
+			ractive.set("projs", pjs);
+			var pjs2 = {};
+			pjs.forEach(function(itm){ pjs2[itm.pid] = itm.title; });
+			pjs2[0] = "";
+			ractive.set("projs2", pjs2);
+			console.log("Projs:", pjs);
+		}
+		lock7 = true;
+	});
+	
 	var modalIntv = setInterval(function(){
-		if(lock1 && lock2){
+		if(lock1 && lock2 && lock3 && lock4 && lock5 && lock6 && lock7){
 			ractive.set("modla", "none");
 			clearInterval(modalIntv);
 		}
