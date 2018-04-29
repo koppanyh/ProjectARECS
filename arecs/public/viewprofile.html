@@ -30,6 +30,10 @@
 			#chpic:hover {
 				opacity: 1;
 			}
+			td input[type=text] {
+				width: 100%;
+				box-sizing: border-box;
+			}
 		</style>
 	</head>
 	<body id="body"></body>
@@ -107,11 +111,28 @@
 					<th>Descrption</th>
 				</tr>{{/if}}
 				{{#each .historical}}<tr>
-					<td {{#if .day}}class="editable" on-click="editday"{{/if}} style="min-width: 6em">{{.day}}</td>
-					<td class="editable" on-click="edithstart" style="min-width: 4em">{{.tstart}}</td>
-					<td class="editable" on-click="edithend" style="min-width: 4em">{{.tend}}</td>
-					<td {{#if !.day}}class="editable" on-click="editproj"{{/if}} style="min-width: 6em">{{projs2[.pid]}}</td>
-					<td {{#if !.day}}class="editable" on-click="editdesc"{{/if}} style="width: 100%; text-align: left">{{.description}}</td>
+					<td {{#if .day}}class="editable" on-click="editday"{{/if}} style="min-width: 6em">
+						{{#if !.eday}}{{.day}}{{else}}
+						<input type="date" value="{{.day}}">{{/if}}
+					</td>
+					<td class="editable" on-click="edithstart" style="min-width: 4em">
+						{{#if !.etstart}}{{.tstart}}{{else}}
+						<input type="time" value="{{.tstart}}">{{/if}}
+					</td>
+					<td class="editable" on-click="edithend" style="min-width: 4em">
+						{{#if !.etend}}{{.tend}}{{else}}
+						<input type="time" value="{{.tend}}">{{/if}}
+					</td>
+					<td {{#if !.day}}class="editable" on-click="editproj"{{/if}} style="min-width: 6em">
+						{{#if !.epid}}{{projs2[.pid]}}{{else}}
+						<select value="{{.pid}}" style="width: 100%">
+							{{#each projs}}<option value={{.pid}}>{{#if !.active}}*{{/if}}{{.title}}</option>{{/each}}
+						</select>{{/if}}
+					</td>
+					<td {{#if !.day}}class="editable" on-click="editdesc"{{/if}} style="width: 100%; text-align: left">
+						{{#if !.edescription}}{{.description}}{{else}}
+						<input type="text" value="{{.description}}">{{/if}}
+					</td>
 				</tr>{{else}}<tr><td>No Work Yet</td></tr>{{/each}}
 			</table><br>
 			{{#if currentedit3 != null}}
@@ -236,7 +257,23 @@
 	function pushedit3(){
 		var cedit = ractive.get("currentedit3");
 		if(cedit != null){
-			console.log(cedit);
+			ractive.set("modla", "");
+			var i = ractive.get("historical").findIndex(function(itm){
+				if("wid" in cedit) return itm.wid == cedit.wid;
+				return itm.did == cedit.did;
+			});
+			var value = ractive.get("historical["+i+"]."+cedit.tag);
+			var req = "/api?action=edit";
+			if("wid" in cedit) req += "works&wid="+cedit.wid;
+			else req += "clocks&did="+cedit.did;
+			req += "&uid="+uid+"&tag="+cedit.tag+"&value="+encodeURIComponent(value);
+			httpRequest("GET",req,"",function(http){
+				var resp = JSON.parse(http.responseText);
+				checkError(resp);
+				ractive.set("modla", "none");
+				console.log("Pushed:", resp);
+			});
+			ractive.set("historical["+i+"].e"+cedit.tag, undefined);
 			ractive.set("currentedit3", null);
 		}
 	}
@@ -258,13 +295,13 @@
 			rfids: [],
 			scanners: [],
 			estimate: [
-				{day: "Sunday",    indx: 0, hours: 8, start: "09:00", end: "17:00"},
+				{day: "Sunday",    indx: 0, hours: 0, start: "00:00", end: "00:00"},
 				{day: "Monday",    indx: 1, hours: 8, start: "09:00", end: "17:00"},
 				{day: "Tuesday",   indx: 2, hours: 8, start: "09:00", end: "17:00"},
 				{day: "Wednesday", indx: 3, hours: 8, start: "09:00", end: "17:00"},
 				{day: "Thursday",  indx: 4, hours: 8, start: "09:00", end: "17:00"},
 				{day: "Friday",    indx: 5, hours: 8, start: "09:00", end: "17:00"},
-				{day: "Saturday",  indx: 6, hours: 8, start: "09:00", end: "17:00"}
+				{day: "Saturday",  indx: 6, hours: 0, start: "00:00", end: "00:00"}
 			],
 			historical: [],
 			projs: [],
@@ -402,25 +439,28 @@
 					this.set("currentedit3", {did: a.did, tag: "day", orig: a.day});
 					event.set("eday", true);
 				}
-				console.log(event.get());
 			});
 			this.on("edithstart", function(event){ //did and wid
 				var a = event.get();
-				if(!a.estart){
+				if(!a.etstart){
 					pushedit3();
-					this.set("currentedit3", {});
-					event.set("estart", true);
+					var dict = {tag: "tstart", orig: a.tstart};
+					if("wid" in a) dict.wid = a.wid;
+					else dict.did = a.did;
+					this.set("currentedit3", dict);
+					event.set("etstart", true);
 				}
-				console.log(event.get());
 			});
 			this.on("edithend", function(event){ //did and wid
 				var a = event.get();
-				if(!a.eend){
+				if(!a.etend){
 					pushedit3();
-					this.set("currentedit3", {});
-					event.set("eend", true);
+					var dict = {tag: "tend", orig: a.tend};
+					if("wid" in a) dict.wid = a.wid;
+					else dict.did = a.did;
+					this.set("currentedit3", dict);
+					event.set("etend", true);
 				}
-				console.log(event.get());
 			});
 			this.on("editproj", function(event){ //wid only
 				var a = event.get();
@@ -429,7 +469,6 @@
 					this.set("currentedit3", {wid: a.wid, tag: "pid", orig: a.pid});
 					event.set("epid", true);
 				}
-				console.log(event.get());
 			});
 			this.on("editdesc", function(event){ //wid only
 				var a = event.get();
@@ -438,11 +477,19 @@
 					this.set("currentedit3", {wid: a.wid, tag: "description", orig: a.description});
 					event.set("edescription", true);
 				}
-				console.log(event.get());
 			});
 			this.on("canceledit3", function(event){
+				var a = this.get("currentedit3");
+				var i = this.get("historical").findIndex(function(itm){
+					if("wid" in a) return itm.wid == a.wid;
+					return itm.did == a.did;
+				});
+				this.set("historical["+i+"]."+a.tag, a.orig);
+				this.set("historical["+i+"].e"+a.tag, undefined);
+				this.set("currentedit3", null);
 			});
 			this.on("doneedit3", function(event){
+				pushedit3();
 			});
 			
 			this.on("editstart", function(event){

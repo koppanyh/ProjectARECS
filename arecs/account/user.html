@@ -53,7 +53,7 @@
 		<img id="logo" src="/images/logo.png"><br>
 		<a href="/">Home</a>&nbsp;&nbsp;
 		{{#if user.admin}}<a href="/users.html">Manage Employees</a>&nbsp;&nbsp;
-		<a href="/admin.html">Administration</a>&nbsp;&nbsp;{{/if}}
+		<a href="/settings.html">Settings</a>&nbsp;&nbsp;{{/if}}
 		<a href="/account/logout">Log Out</a>
 	</nav>
 	
@@ -69,7 +69,7 @@
 	<div id="right">
 		{{user.fname}} {{user.lname}}<br>
 		{{user.email}}<br><br>
-		${{(user.wage * totalhours).toFixed(2)}} @ {{totalhours.toFixed(2)}} hours<br><br>
+		${{user.wage > 0 ? (user.wage * totalhours).toFixed(2) : Math.abs(user.wage)}} @ {{totalhours.toFixed(2)}} hours<br><br>
 		
 		{{#if edithours}}<input type="number" value="{{estimhours}}"><button on-click="editestim">Done</button>
 		{{else}}<span class="editable" on-click="editestim">Estimated hours for today: {{estimhours.toFixed(2)}}</span>{{/if}}
@@ -80,24 +80,6 @@
 	
 	<!--This week's work, not editable-->
 	<div style="text-align: center">
-		<b>This week's work:</b><br>
-		<table border="1">
-			{{#if .thisweek.length > 0}}<tr>
-				<th>Day</th>
-				<th>Start</th>
-				<th>End</th>
-				<th>Project</th>
-				<th>Descrption</th>
-			</tr>{{/if}}
-			{{#each .thisweek}}<tr>
-				<td style="min-width: 6em">{{.date}}</td>
-				<td style="min-width: 4em">{{.tstart}}</td>
-				<td style="min-width: 4em">{{.tend}}</td>
-				<td style="min-width: 6em">{{projs2[.pid]}}</td>
-				<td style="width: 100%; text-align: left">{{.description}}</td>
-			</tr>{{else}}<tr><td>No work yet</td></tr>{{/each}}
-		</table><br><br>
-		
 		<!--Past day hours and works with span selector, not editable-->
 		<b>Historical hours:<br>
 		<input type="date" value="{{hstart}}"> to <input type="date" value="{{hend}}">
@@ -111,7 +93,7 @@
 				<th>Descrption</th>
 			</tr>{{/if}}
 			{{#each .historical}}<tr>
-				<td style="min-width: 6em">{{.date}}</td>
+				<td style="min-width: 6em">{{.day}}</td>
 				<td style="min-width: 4em">{{.tstart}}</td>
 				<td style="min-width: 4em">{{.tend}}</td>
 				<td style="min-width: 6em">{{projs2[.pid]}}</td>
@@ -206,21 +188,19 @@
 				wage: 0
 			},
 			estimate: [
-				{day: "Sunday",    indx: 0, hours: 8, start: "09:00", end: "17:00"},
+				{day: "Sunday",    indx: 0, hours: 0, start: "00:00", end: "00:00"},
 				{day: "Monday",    indx: 1, hours: 8, start: "09:00", end: "17:00"},
 				{day: "Tuesday",   indx: 2, hours: 8, start: "09:00", end: "17:00"},
 				{day: "Wednesday", indx: 3, hours: 8, start: "09:00", end: "17:00"},
 				{day: "Thursday",  indx: 4, hours: 8, start: "09:00", end: "17:00"},
 				{day: "Friday",    indx: 5, hours: 8, start: "09:00", end: "17:00"},
-				{day: "Saturday",  indx: 6, hours: 8, start: "09:00", end: "17:00"}
+				{day: "Saturday",  indx: 6, hours: 0, start: "00:00", end: "00:00"}
 			],
 			totalhours: 0,
 			edithours: false,
 			estimhours: 0,
 			orgestimhours: 0,
 			currentedit: null, //{indx: 0, tag: "", value: "", orig: ""}
-			hstart: getdate(),
-			hend: getdate(),
 			historical: []
 		},
 		oninit: function(){
@@ -301,53 +281,49 @@
 			});
 			
 			this.on("history", function(event){
-				ractive.set("modla", "");
-				var req = "fromday="+ractive.get("hstart")+"&today="+ractive.get("hend");
-				httpRequest("GET","/api?action=getclocks&notjustnull&"+req,"",function(http){
-					var resp = JSON.parse(http.responseText);
-					checkError(resp);
-					if(resp.length > 0){
-						var mmin = resp[0].did;
-						var mmax = resp[0].did;
-						var dates = {};
-						resp.forEach(function(itm){
-							if(itm.did > mmax) mmax = itm.did;
-							if(itm.did < mmin) mmin = itm.did;
-							dates[itm.did] = trimdate(itm.day);
+				this.set("modla", "");
+				var hstart = this.get("hstart");
+				var hend = this.get("hend");
+				httpRequest("GET","/api?action=getclocks&notjustnull&fromday="+hstart+"&today="+hend,"",function(http){
+					var res = JSON.parse(http.responseText);
+					checkError(res);
+					if(res.length > 0){
+						res = res.map(function(itm){
+							var t = new Date(itm.day);
+							itm.wkday = t.getDay();
+							itm.day = trimdate(itm.day);
+							itm.tstart = trimtime(itm.tstart);
+							if(itm.tend) itm.tend = trimtime(itm.tend);
+							return itm;
 						});
-						req = "fromdid="+mmin+"&todid="+mmax;
-						httpRequest("GET","/api?action=getworks&"+req,"",function(http){
-							var pser = JSON.parse(http.responseText);
-							checkError(pser);
-							pser = pser.map(function(itm){
-								itm.date = dates[itm.did];
-								itm.tstart = trimtime(itm.tstart);
+						httpRequest("GET","/api?action=getworks&fromdid="+res[0].did+"&todid="+res[res.length-1].did,"",function(http){
+							var res2 = JSON.parse(http.responseText);
+							checkError(res2);
+							res2 = res2.map(function(itm){
 								itm.tend = trimtime(itm.tend);
+								itm.tstart = trimtime(itm.tstart);
 								return itm;
 							});
-							ractive.set("historical", pser);
+							var works = [];
+							res.forEach(function(itm){
+								itm.description = itm.hours.toFixed(2) + " hours";
+								works.push(itm);
+								res2.forEach(function(mti){
+									if(mti.did == itm.did) works.push(mti);
+								});
+							});
+							ractive.set("historical", works);
+							console.log("Works:", res2);
+							console.log("Clocks and works:", works);
 							ractive.set("modla", "none");
-							console.log("OUTPUT:", pser);
 						});
-					} else{
-						ractive.set("historical", []);
-						ractive.set("modla", "none");
-					}
-					console.log("OUTPUT:", resp);
+					} else ractive.set("modla", "none");
+					console.log("Clocks:", res);
 				});
 			});
 		}
 	});
 	
-	var colors = [
-		"Sunday",   "ffaaaa","880000",
-		"Monday",   "aaffaa","008800",
-		"Tuesday",  "aaaaff","000088",
-		"Wednesday","ffaaaa","880000",
-		"Thursday", "aaffaa","008800",
-		"Friday",   "aaaaff","000088",
-		"Saturday", "ffaaaa","880000"
-	];
 	var chart = AmCharts.makeChart( "graph", {
 		"type": "gantt",
 		"theme": "light",
@@ -436,77 +412,77 @@
 	var lock3 = false;
 	var lock4 = false;
 	httpRequest("GET","/api?action=getclocks&notjustnull&week="+getdate(),"",function(http){
-		if(http.responseText != ""){
-			days = JSON.parse(http.responseText);
-			checkError(days);
-			days = days.map(function(itm){
+		var res = JSON.parse(http.responseText);
+		checkError(res);
+		if(res.length > 0){
+			res = res.map(function(itm){
 				var t = new Date(itm.day);
-				itm.day = trimdate(itm.day);
 				itm.wkday = t.getDay();
+				itm.day = trimdate(itm.day);
+				itm.tstart = trimtime(itm.tstart);
+				if(itm.tend) itm.tend = trimtime(itm.tend);
 				return itm;
 			});
-			console.log("Clock:", days);
-			if(days.length > 0){
-				httpRequest("GET","/api?action=getworks&fromdid="+days[0].did+"&todid="+days[days.length-1].did,"",function(http){
-					if(http.responseText != ""){
-						var ans = JSON.parse(http.responseText);
-						checkError(ans);
-						ans = ans.map(function(itm){
-							var day = days.find(function(mti){ return mti.did == itm.did; })
-							itm.date = day.day;
-							itm.wkday = day.wkday;
-							itm.tstart = trimtime(itm.tstart);
-							itm.tend = trimtime(itm.tend);
-							return itm;
-						});
-						ractive.set("thisweek", ans);
-						console.log("Works:", ans);
-					
-						var dp = [];
-						for(var i=0; i<7; i++){
-							var dayname = colors.shift();
-							var backcol = colors.shift();
-							var forecol = colors.shift();
-						
-							var work = [];
-						
-							var dayfind = days.find(function(itm){ return itm.wkday == i; });
-							if(dayfind){
-								work.push({
-									"start": trimtime(dayfind.tstart),
-									"end": (dayfind.tend ? trimtime(dayfind.tend) : gettime()),
-									"color": backcol,
-									"task": dayname
-								});
-								ans.forEach(function(itm){
-									if(itm.wkday == i) work.push({
-										"start": trimtime(itm.tstart),
-										"end": trimtime(itm.tend),
-										"color": forecol,
-										"task": itm.description
-									});
-								});
-							}
-						
-							dp.push({
-								"day": dayname,
-								"work": work
-							});
-						}
-						chart.dataProvider = dp;
-						chart.validateData();
-						console.log(dp);
-					}
-					lock4 = true;
+			ractive.set({hstart: res[0].day, hend: res[res.length-1].day});
+			httpRequest("GET","/api?action=getworks&fromdid="+res[0].did+"&todid="+res[res.length-1].did,"",function(http){
+				var res2 = JSON.parse(http.responseText);
+				checkError(res2);
+				res2 = res2.map(function(itm){
+					itm.tend = trimtime(itm.tend);
+					itm.tstart = trimtime(itm.tstart);
+					return itm;
 				});
-				
-				did = days[days.length-1].did;
-				if(days[days.length-1].dat == getdate() && days[days.length-1].hours > 0){
-					ractive.set("estimhours", days[days.length-1].hours);
-					ractive.set("orgestimhours", ractive.get("estimhours"));
-				}
-			} else lock4 = true;
-		}
+				var works = [];
+				res.forEach(function(itm){
+					itm.description = itm.hours.toFixed(2) + " hours";
+					works.push(itm);
+					res2.forEach(function(mti){
+						if(mti.did == itm.did) works.push(mti);
+					});
+				});
+				ractive.set("historical", works);
+				var dp = [
+					{"day": "Sunday",    "work": []},
+					{"day": "Monday",    "work": []},
+					{"day": "Tuesday",   "work": []},
+					{"day": "Wednesday", "work": []},
+					{"day": "Thursday",  "work": []},
+					{"day": "Friday",    "work": []},
+					{"day": "Saturday",  "work": []},
+				];
+				var colors = [
+					"ffaaaa","880000",
+					"aaffaa","008800",
+					"aaaaff","000088",
+					"ffaaaa","880000",
+					"aaffaa","008800",
+					"aaaaff","000088",
+					"ffaaaa","880000"
+				];
+				var backcol = colors[0];
+				var forecol = colors[1];
+				var wkday = 0;
+				works.forEach(function(itm){
+					if("wkday" in itm){
+						wkday = itm.wkday;
+						backcol = colors[wkday * 2];
+						forecol = colors[wkday * 2 + 1];
+					}
+					dp[wkday].work.push({
+						"start": itm.tstart,
+						"end": (itm.tend ? itm.tend : gettime()),
+						"color": ("wkday" in itm ? backcol : forecol),
+						"task": ("wkday" in itm ? dp[wkday].day+" - " : "") + itm.description
+					});
+				});
+				chart.dataProvider = dp;
+				chart.validateData();
+				console.log("Works:", res2);
+				console.log("Clock/works:", works);
+				lock4 = true;
+			});
+		} else lock4 = true;
+		console.log("Clocks:", res);
 		lock3 = true;
 	});
 	

@@ -419,7 +419,16 @@ function apiFunc(req, res){
 			var errfunc = function(inp){ res.send(JSON.stringify(inp)); };
 			if(["day","tstart","tend"].indexOf(dat.tag) >= 0){
 				var query = "UPDATE daydb SET "+dat.tag+"=?, hours=TIME_TO_SEC(TIMEDIFF(tend,tstart))/3600 WHERE did=? AND uid=?";
-				mysqlquery(query,[dat.value,dat.did,req.session.user.uid],function(result){
+				var queryparms = [dat.value,dat.did];
+				if("uid" in dat){
+					if(req.session.user.admin) queryparms.push(dat.uid);
+					else{
+						console.log("editclocks: Unauthorized access by ", req.session.user.fname, req.session.user.lname);
+						res.send('{"error":"Unauthorized access to API call editclocks, event will be logged"}');
+						return;
+					}
+				} else queryparms.push(req.session.user.uid);
+				mysqlquery(query,queryparms,function(result){
 					res.send(JSON.stringify(result));
 				},"editclocks.1",errfunc,errfunc,errfunc);
 			} else if(dat.tag == "hours"){
@@ -469,9 +478,18 @@ function apiFunc(req, res){
 			var errfunc = function(inp){ res.send(JSON.stringify(inp)); };
 			if(["tstart","tend","pid","description"].indexOf(dat.tag) >= 0){
 				var query = "UPDATE workdb SET "+dat.tag+"=? WHERE wid=? AND uid=?";
-				mysqlquery(query,[dat.value,dat.wid,req.session.user.uid],function(result){
+				var queryparms = [dat.value,dat.wid];
+				if("uid" in dat){
+					if(req.session.user.admin) queryparms.push(dat.uid);
+					else{
+						console.log("editworks: Unauthorized access by ", req.session.user.fname, req.session.user.lname);
+						res.send('{"error":"Unauthorized access to API call editworks, event will be logged"}');
+						return;
+					}
+				}else queryparms.push(req.session.user.uid);
+				mysqlquery(query,queryparms,function(result){
 					res.send(JSON.stringify(result));
-				},"editworks",);
+				},"editworks",errfunc,errfunc,errfunc);
 			} else res.send('{"error":"editworks: Incorrect column value: '+ dat.tag +'"}');
 		}
 		else if(dat.action == "getprojs"){
@@ -484,6 +502,35 @@ function apiFunc(req, res){
 			mysqlquery(query,[],function(result){
 				res.send(JSON.stringify(result));
 			},"getprojs",errfunc,errfunc,errfunc);
+		}
+		else if(dat.action == "addprojs"){
+			if(req.session.user.admin){
+				var query = "INSERT INTO projdb (title, description, active) VALUES (?,?,?)";
+				var queryparms = [dat.title, dat.desc];
+				if("active" in dat) queryparms.push(dat.active);
+				else queryparms.push(1);
+				var errfunc = function(inp){ res.send(JSON.stringify(inp)); };
+				mysqlquery(query,queryparms,function(result){
+					res.send(JSON.stringify(result));
+				},"addprojs",errfunc,errfunc,errfunc);
+			} else{
+				console.log("addprojs: Unauthorized access by ", req.session.user.fname, req.session.user.lname);
+				res.send('{"error":"Unauthorized access to API call addprojs, event will be logged"}');
+			}
+		}
+		else if(dat.action == "editprojs"){
+			if(req.session.user.admin){
+				if(["title","description","active"].indexOf(dat.tag) >= 0){
+					var query = "UPDATE projdb SET "+dat.tag+"=? WHERE pid=?";
+					var errfunc = function(inp){ res.send(JSON.stringify(inp)); };
+					mysqlquery(query,[dat.value, dat.pid],function(result){
+						res.send(JSON.stringify(result));
+					},"editprojs",errfunc,errfunc,errfunc);
+				} else res.send('{"error":"editprojs: Incorrect column value: '+dat.tag+'"}');
+			} else{
+				console.log("editprojs: Unauthorized access by ", req.session.user.fname, req.session.user.lname);
+				res.send('{"error":"Unauthorized access to API call editprojs, event will be logged"}');
+			}
 		}
 		else if(dat.action == "gethours"){
 			var errfunc = function(inp){ res.send(JSON.stringify(inp)); };
@@ -588,6 +635,33 @@ function apiFunc(req, res){
 			} else{
 				console.log("getscanners: Unauthorized access by ", req.session.user.fname, req.session.user.lname);
 				res.send('{"error":"Unauthorized access to API call getscanners, event will be logged"}');
+			}
+		}
+		else if(dat.action == "addscanners"){
+			if(req.session.user.admin){
+				var query = "INSERT INTO scannerdb (devid, name, location) VALUES (?,?,?)";
+				var queryparms = [dat.devid, dat.name, dat.location];
+				var errfunc = function(inp){ res.send(JSON.stringify(inp)); };
+				mysqlquery(query,queryparms,function(result){
+					res.send(JSON.stringify(result));
+				},"addscanners",errfunc,errfunc,errfunc);
+			} else{
+				console.log("addscanners: Unauthorized access by ", req.session.user.fname, req.session.user.lname);
+				res.send('{"error":"Unauthorized access to API call addscanners, event will be logged"}');
+			}
+		}
+		else if(dat.action == "editscanners"){
+			if(req.session.user.admin){
+				if(["devid","name","location"].indexOf(dat.tag) >= 0){
+					var query = "UPDATE scannerdb SET "+dat.tag+"=? WHERE sid=?";
+					var errfunc = function(inp){ res.send(JSON.stringify(inp)); };
+					mysqlquery(query,[dat.value, dat.sid],function(result){
+						res.send(JSON.stringify(result));
+					},"editscanners",errfunc,errfunc,errfunc);
+				} else res.send('{"error":"editscanners: Incorrect column value: '+dat.tag+'"}');
+			} else{
+				console.log("editscanners: Unauthorized access by ", req.session.user.fname, req.session.user.lname);
+				res.send('{"error":"Unauthorized access to API call editscanners, event will be logged"}');
 			}
 		}
 		else res.send('{"error":"Unknown API Action"}');
