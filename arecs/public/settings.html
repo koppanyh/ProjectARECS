@@ -1,7 +1,7 @@
 <!DOCTYPE HTML>
 <html>
 	<head>
-		<title>ARECS - Clock In</title>
+		<title>ARECS - Settings</title>
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1.0">
 		<link rel="icon" href="/images/stop-watch.png">
@@ -99,11 +99,43 @@
 				<th>Scanner</th>
 			</tr>{{/if}}
 			{{#each .rfids}}<tr>
-				<td style="min-width: 4em">{{.day}}</td>
-				<td style="min-width: 6em">{{.time}}</td>
+				<td style="min-width: 6em">{{.day}}</td>
+				<td style="min-width: 4em">{{.time}}</td>
 				<td style="min-width: 10em">{{employees[.uid]}}</td>
 				<td style="width: 100%; text-align: left">{{scans2[.sid]}}</td>
 			</tr>{{else}}<tr><td>No RFID events yet</td></tr>{{/each}}
+		</table><br><br>
+		
+		<b>Restricted API Incidents:</b><br>
+		<table border="1">
+			{{#if .incids.length > 0}}<tr>
+				<th>Day</th>
+				<th>Time</th>
+				<th>API Call</th>
+				<th>User</th>
+			</tr>{{/if}}
+			{{#each .incids}}<tr>
+				<td style="min-width: 6em">{{.day}}</td>
+				<td style="min-width: 4em">{{.time}}</td>
+				<td style="min-width: 10em">{{.api}}</td>
+				<td style="width: 100%; text-align: left">{{employees[.uid]}}</td>
+			</tr>{{else}}<tr><td>No restricted API incidents</td></tr>{{/each}}
+		</table><br><br>
+		
+		<b>Unregistered RFID Events:</b><br>
+		<table border="1">
+			{{#if .urfids.length > 0}}<tr>
+				<th>Day</th>
+				<th>Time</th>
+				<th>Card</th>
+				<th>Scanner</th>
+			</tr>{{/if}}
+			{{#each .urfids}}<tr>
+				<td style="min-width: 6em">{{.day}}</td>
+				<td style="min-width: 4em">{{.time}}</td>
+				<td style="min-width: 10em">{{.card}}</td>
+				<td style="width: 100%; text-align: left">{{scans2[.node] || "*"+.node}}</td>
+			</tr>{{else}}<tr><td>No unregistered RFID events</td></tr>{{/each}}
 		</table>
 	</div><br><br>
 	
@@ -172,10 +204,12 @@
 			scans2: {},
 			employees: {},
 			rfids: [],
+			urfids: [],
 			rstart: getdate(),
 			rend: getdate(),
 			currentedit1: null,
-			currentedit2: null
+			currentedit2: null,
+			incids: []
 		},
 		oninit: function(){
 			this.on("closemodal", function(event){
@@ -358,8 +392,26 @@
 		lock5 = true;
 	});
 	
+	var lock6 = false;
+	httpRequest("GET","/api?action=geturegrfidevents","",function(http){
+		var resp = JSON.parse(http.responseText);
+		checkError(resp);
+		ractive.set("urfids", resp);
+		console.log("URFIDS:", resp);
+		lock6 = true;
+	});
+	
+	var lock7 = false;
+	httpRequest("GET","/api?action=getincidents","",function(http){
+		var resp = JSON.parse(http.responseText);
+		checkError(resp);
+		ractive.set("incids", resp);
+		console.log("Incidents:", resp);
+		lock7 = true;
+	});
+	
 	var modalIntv = setInterval(function(){
-		if(lock1 && lock2 && lock3 && lock4 && lock5){
+		if(lock1 && lock2 && lock3 && lock4 && lock5 && lock6){
 			ractive.set("modla", "none");
 			clearInterval(modalIntv);
 		}

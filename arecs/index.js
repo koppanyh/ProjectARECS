@@ -119,8 +119,20 @@ task1 = cron.schedule('59 23 * * *', function(){
 		}
 	},"cronjob1.0");
 });
+var incidents = [];
+function logIncident(api, uid){
+	var t = new Date();
+	var d = t.getFullYear() + "-";
+	d += (t.getMonth() < 9 ? "0" : "") + (t.getMonth()+1) + "-";
+	d += (t.getDate() < 10 ? "0" : "") + t.getDate();
+	var q = (t.getHours() < 10 ? "0" : "") + t.getHours() + ":";
+	q += (t.getMinutes() < 10 ? "0" : "") + t.getMinutes();
+	incidents.push({day: d, time: q, api: api, uid: uid});
+	while(incidents.length > 100) incidents.shift();
+}
 
 ///////////////////////////////// account stuff /////////////////////////////
+
 var userRefresh = {}; //[uid]: true/false/undefined
 app.post('/account', upload.single("image"), urlencodedParser, function(req, res){
 	if(req.body.action == "login"){
@@ -161,6 +173,7 @@ app.post('/account', upload.single("image"), urlencodedParser, function(req, res
 						}
 					},"getuser.1",errfunc,errfunc,errfunc);
 				} else{
+					logIncident("getuser", req.session.user.uid);
 					console.log("getuser: Unauthorized access by ", req.session.user.fname, req.session.user.lname);
 					res.send('{"error":"Unauthorized access to API call getuser, event will be logged"}');
 				}
@@ -206,6 +219,7 @@ app.post('/account', upload.single("image"), urlencodedParser, function(req, res
 						},"updateestim.1",errfunc,errfunc,errfunc);
 						userRefresh[dat.uid] = true;
 					} else{
+						logIncident("updateestim", req.session.user.uid);
 						console.log("updateestim: Unauthorized access by ", req.session.user.fname, req.session.user.lname);
 						res.send('{"error":"Unauthorized access to API call updateestim, event will be logged"}');
 					}
@@ -248,6 +262,7 @@ app.post('/account', upload.single("image"), urlencodedParser, function(req, res
 				}
 				if("uid" in dat){
 					if(!req.session.user.admin){
+						logIncident("edituser", req.session.user.uid);
 						console.log("edituser: Unauthorized access by ", req.session.user.fname, req.session.user.lname);
 						res.send('{"error":"Unauthorized access to API call edituser, event will be logged"}');
 						return;
@@ -276,10 +291,12 @@ app.post('/account', upload.single("image"), urlencodedParser, function(req, res
 					res.send(JSON.stringify(result));
 				},"newuser",errfunc,errfunc,errfunc);
 			} else{
+				logIncident("newuser", req.session.user.uid);
 				console.log("newuser: Unauthorized access by ", req.session.user.fname, req.session.user.lname);
 				res.send('{"error":"Unauthorized access to API call newuser, event will be logged"}');
 			}
 		} else{
+			logIncident("newuser", req.session.user.uid);
 			console.log("newuser: Unauthorized access by unknown user");
 			res.send('{"error":"Unauthorized access to API call newuser, event will be logged"}');
 		}
@@ -293,12 +310,14 @@ app.post('/account', upload.single("image"), urlencodedParser, function(req, res
 				},"deleteuser",errfunc,errfunc,errfunc);
 				userRefresh[req.body.uid] = true;
 			} else{
+				logIncident("deleteuser", req.session.user.uid);
 				console.log("deleteuser: Unauthorized access by ", req.session.user.fname, req.session.user.lname);
 				res.send('{"error":"Unauthorized access to API call deleteuser, event will be logged"}');
 			}
 		} else{
-			console.log("edituser: Unauthorized access by unknown user");
-			res.send('{"error":"Unauthorized access to API call edituser, event will be logged"}');
+			logIncident("deleteuser", req.session.user.uid);
+			console.log("deleteuser: Unauthorized access by unknown user");
+			res.send('{"error":"Unauthorized access to API call deleteuser, event will be logged"}');
 		}
 	} else if(req.body.action == "logout"){
 		req.redirect("account/logout");
@@ -325,6 +344,7 @@ app.get('/account/user.html', function(req, res){
 
 ///////////////////////////////////// api stuff //////////////////////////////////
 
+var urfids = [];
 function apiFunc(req, res){
 	var dat = Object.assign(req.query, req.body);
 	if(dat.action == "rfidevent"){
@@ -346,10 +366,10 @@ function apiFunc(req, res){
 		console.log(rf.id, fulldate, fulltime, rf.node);
 		
 		var errfunc = function(inp){ res.send(JSON.stringify(inp)); }
-		mysqlquery("SELECT uid from userdb WHERE rfid=?",[rf.id],function(result2){
-			if(result2.length > 0){
-				mysqlquery("SELECT sid from scannerdb WHERE devid=?",[rf.node],function(result1){
-					if(result1.length > 0){
+		mysqlquery("SELECT sid from scannerdb WHERE devid=?",[rf.node],function(result1){
+			if(result1.length > 0){
+				mysqlquery("SELECT uid from userdb WHERE rfid=?",[rf.id],function(result2){
+					if(result2.length > 0){
 						var query = "INSERT INTO rfiddb (uid, sid, day, time) VALUES (?,?,?,?)"
 						mysqlquery(query,[result2[0].uid, result1[0].sid, fulldate, fulltime],function(result){
 							res.end("success");
@@ -358,16 +378,23 @@ function apiFunc(req, res){
 						mysqlquery(query3,[result2[0].uid, fulldate],function(result3){
 							if(result3.length == 0){
 								var query2 = "INSERT INTO daydb (uid, day, tstart) VALUES (?,?,?)";
-								mysqlquery(query2,[result2[0].uid, fulldate, fulltime],function(result){},"rfidevent");
+								mysqlquery(query2,[result2[0].uid, fulldate, fulltime],function(result){},"rfidevent.6");
 							}
 						},"rfidevent.3");
-					} else res.end("fail");
-				},"rfidevent.1",errfunc,errfunc,errfunc);
+					} else{
+						urfids.push({day: fulldate, time: fulltime, card: rf.id, node: result1[0].sid});
+						while(urfids.length > 100) urfids.shift();
+						console.log("rfidevent.4: Unknown RFID number: " + rf.id);
+						res.end("fail");
+					}
+				},"rfidevent.0",errfunc,errfunc,errfunc);
 			} else{
-				console.log("rfidevent: Unknown RFID number: " + rf.id);
+				urfids.push({day: fulldate, time: fulltime, card: rf.id, node: rf.node});
+				while(urfids.length > 100) urfids.shift();
+				console.log("rfidevent.5: Unknown RFID node: " + rf.node);
 				res.end("fail");
 			}
-		},"rfidevent.0",errfunc,errfunc,errfunc);
+		},"rfidevent.1",errfunc,errfunc,errfunc);
 	}
 	else if(dat.action == "gettime"){
 		console.log("Got time at", (new Date()));
@@ -381,6 +408,7 @@ function apiFunc(req, res){
 			if("uid" in dat){
 				if(req.session.user.admin) queryparms.push(dat.uid);
 				else{
+					logIncident("getclocks", req.session.user.uid);
 					console.log("getclocks: Unauthorized access by ", req.session.user.fname, req.session.user.lname);
 					res.send('{"error":"Unauthorized access to API call getclocks, event will be logged"}');
 					return;
@@ -423,6 +451,7 @@ function apiFunc(req, res){
 				if("uid" in dat){
 					if(req.session.user.admin) queryparms.push(dat.uid);
 					else{
+						logIncident("editclocks", req.session.user.uid);
 						console.log("editclocks: Unauthorized access by ", req.session.user.fname, req.session.user.lname);
 						res.send('{"error":"Unauthorized access to API call editclocks, event will be logged"}');
 						return;
@@ -444,6 +473,7 @@ function apiFunc(req, res){
 			if("uid" in dat){
 				if(req.session.user.admin) queryparms.push(dat.uid);
 				else{
+					logIncident("getworks", req.session.user.uid);
 					console.log("getworks: Unauthorized access by ", req.session.user.fname, req.session.user.lname);
 					res.send('{"error":"Unauthorized access to API call getworks, event will be logged"}');
 					return;
@@ -482,6 +512,7 @@ function apiFunc(req, res){
 				if("uid" in dat){
 					if(req.session.user.admin) queryparms.push(dat.uid);
 					else{
+						logIncident("editworks", req.session.user.uid);
 						console.log("editworks: Unauthorized access by ", req.session.user.fname, req.session.user.lname);
 						res.send('{"error":"Unauthorized access to API call editworks, event will be logged"}');
 						return;
@@ -514,6 +545,7 @@ function apiFunc(req, res){
 					res.send(JSON.stringify(result));
 				},"addprojs",errfunc,errfunc,errfunc);
 			} else{
+				logIncident("addprojs", req.session.user.uid);
 				console.log("addprojs: Unauthorized access by ", req.session.user.fname, req.session.user.lname);
 				res.send('{"error":"Unauthorized access to API call addprojs, event will be logged"}');
 			}
@@ -528,6 +560,7 @@ function apiFunc(req, res){
 					},"editprojs",errfunc,errfunc,errfunc);
 				} else res.send('{"error":"editprojs: Incorrect column value: '+dat.tag+'"}');
 			} else{
+				logIncident("editprojs", req.session.user.uid);
 				console.log("editprojs: Unauthorized access by ", req.session.user.fname, req.session.user.lname);
 				res.send('{"error":"Unauthorized access to API call editprojs, event will be logged"}');
 			}
@@ -560,6 +593,7 @@ function apiFunc(req, res){
 						res.send(JSON.stringify(result));
 					},"gethours.0",errfunc,errfunc,errfunc);
 				} else{
+					logIncident("gethours", req.session.user.uid);
 					console.log("gethours: Unauthorized access by ", req.session.user.fname, req.session.user.lname);
 					res.send('{"error":"Unauthorized access to API call gethours, event will be logged"}');
 				}
@@ -588,6 +622,7 @@ function apiFunc(req, res){
 					res.send(JSON.stringify(result));
 				},"getemployees",errfunc,errfunc,errfunc);
 			} else{
+				logIncident("getemployees", req.session.user.uid);
 				console.log("getemployees: Unauthorized access by ", req.session.user.fname, req.session.user.lname);
 				res.send('{"error":"Unauthorized access to API call getemployees, event will be logged"}');
 			}
@@ -618,8 +653,18 @@ function apiFunc(req, res){
 					res.send(JSON.stringify(result));
 				},"getrfidevents",errfunc,errfunc,errfunc);
 			} else{
+				logIncident("getrfidevents", req.session.user.uid);
 				console.log("getrfidevents: Unauthorized access by ", req.session.user.fname, req.session.user.lname);
 				res.send('{"error":"Unauthorized access to API call getrfidevents, event will be logged"}');
+			}
+		}
+		else if(dat.action == "geturegrfidevents"){
+			if(req.session.user.admin){
+				res.send(JSON.stringify(urfids));
+			} else{
+				logIncident("geturegrfidevents", req.session.user.uid);
+				console.log("geturegrfidevents: Unauthorized access by ", req.session.user.fname, req.session.user.lname);
+				res.send('{"error":"Unauthorized access to API call geturegrfidevents, event will be logged"}');
 			}
 		}
 		else if(dat.action == "getscanners"){
@@ -633,6 +678,7 @@ function apiFunc(req, res){
 					res.send(JSON.stringify(result));
 				},"getscanners",errfunc,errfunc,errfunc);
 			} else{
+				logIncident("getscanners", req.session.user.uid);
 				console.log("getscanners: Unauthorized access by ", req.session.user.fname, req.session.user.lname);
 				res.send('{"error":"Unauthorized access to API call getscanners, event will be logged"}');
 			}
@@ -646,6 +692,7 @@ function apiFunc(req, res){
 					res.send(JSON.stringify(result));
 				},"addscanners",errfunc,errfunc,errfunc);
 			} else{
+				logIncident("addscanners", req.session.user.uid);
 				console.log("addscanners: Unauthorized access by ", req.session.user.fname, req.session.user.lname);
 				res.send('{"error":"Unauthorized access to API call addscanners, event will be logged"}');
 			}
@@ -660,11 +707,21 @@ function apiFunc(req, res){
 					},"editscanners",errfunc,errfunc,errfunc);
 				} else res.send('{"error":"editscanners: Incorrect column value: '+dat.tag+'"}');
 			} else{
+				logIncident("editscanners", req.session.user.uid);
 				console.log("editscanners: Unauthorized access by ", req.session.user.fname, req.session.user.lname);
 				res.send('{"error":"Unauthorized access to API call editscanners, event will be logged"}');
 			}
 		}
-		else res.send('{"error":"Unknown API Action"}');
+		else if(dat.action == "getincidents"){
+			if(req.session.user.admin){
+				res.send(JSON.stringify(incidents));
+			} else{
+				logIncident("getincidents", req.session.user.uid);
+				console.log("getincidents: Unauthorized access by ", req.session.user.fname, req.session.user.lname);
+				res.send('{"error":"Unauthorized access to API call getincidents, event will be logged"}');
+			}
+		}
+		else res.send('{"error":"Unknown API Action: '+dat.action+'"}');
 	}
 }
 app.post('/api', urlencodedParser, function(req, res){ apiFunc(req, res); });
