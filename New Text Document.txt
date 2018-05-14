@@ -256,3 +256,21 @@ new goal: minor bug fixes and features, work on reports and stuff
 	/account/user.html
 /
 	-> /clockin.html
+
+---------------------------------------
+
+2018-05-07
+
+weekly goal was met, fixed a few ui bugs, started report
+
+new goal: work on report and find journal documents to use
+
+Real-time location and inpatient care systems based on passive RFID
+https://0-www-sciencedirect-com.leopac.ulv.edu/science/article/pii/S1084804510000858
+
+Leveraging passive RFID technology for construction resource field mobility and status monitoring in a high-rise renovation project
+https://0-www-sciencedirect-com.leopac.ulv.edu/science/article/pii/S0926580512000301
+
+https://help.libreoffice.org/Writer/Page_Numbers#To_Start_With_a_Defined_Page_Number
+
+http://creativehive.org.uk/mishaalhussain/2016/03/15/conversion-strategies/

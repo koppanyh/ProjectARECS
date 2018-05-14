@@ -135,9 +135,9 @@ function logIncident(api, uid){
 
 var userRefresh = {}; //[uid]: true/false/undefined
 app.post('/account', upload.single("image"), urlencodedParser, function(req, res){
+	var errfunc = function(inp){ res.send(JSON.stringify(inp)); };
 	if(req.body.action == "login"){
 		var query = "SELECT * from userdb WHERE email=?";
-		var errfunc = function(inp){ res.send(JSON.stringify(inp)); };
 		mysqlquery(query,[req.body.email],function(result){
 			if(result.length == 0) res.redirect("/account/login.html?err1");
 			else{
@@ -159,7 +159,6 @@ app.post('/account', upload.single("image"), urlencodedParser, function(req, res
 		if(isLoggedIn(req)){
 			var dat = req.body;
 			var query = "SELECT * FROM userdb WHERE uid=?";
-			var errfunc = function(inp){ res.send(JSON.stringify(inp)); };
 			if("uid" in dat){
 				if(req.session.user.admin){
 					mysqlquery(query,[dat.uid],function(result){
@@ -204,7 +203,6 @@ app.post('/account', upload.single("image"), urlencodedParser, function(req, res
 				}
 				var query = "UPDATE userdb SET days=? WHERE uid=?";
 				var queryparms = [];
-				var errfunc = function(inp){ res.send(JSON.stringify(inp)); };
 				if("uid" in dat){
 					if(req.session.user.admin){
 						queryparms.push(dat.uid);
@@ -275,7 +273,6 @@ app.post('/account', upload.single("image"), urlencodedParser, function(req, res
 					//delete old files
 					userRefresh[req.session.user.uid] = true;
 				}
-				var errfunc = function(inp){ res.send(JSON.stringify(inp)); };
 				mysqlquery(query,queryparms,function(result){
 					res.send(JSON.stringify(result));
 				},"edituser",errfunc,errfunc,errfunc);
@@ -284,7 +281,6 @@ app.post('/account', upload.single("image"), urlencodedParser, function(req, res
 	} else if(req.body.action == "newuser"){
 		if(isLoggedIn(req)){
 			if(req.session.user.admin){
-				var errfunc = function(inp){ res.send(JSON.stringify(inp)); };
 				var query = "INSERT INTO userdb (email,salt,hashpw,fname,lname) VALUES ";
 				query += "('email@email.com','0000','00000000','First','Last')";
 				mysqlquery(query,[],function(result){
@@ -304,7 +300,6 @@ app.post('/account', upload.single("image"), urlencodedParser, function(req, res
 		//also delete all user data in all tables
 		if(isLoggedIn(req)){
 			if(req.session.user.admin){
-				var errfunc = function(inp){ res.send(JSON.stringify(inp)); };
 				mysqlquery("DELETE FROM userdb WHERE uid=?",[req.body.uid],function(result){
 					res.send(JSON.stringify(result));
 				},"deleteuser",errfunc,errfunc,errfunc);
@@ -347,6 +342,7 @@ app.get('/account/user.html', function(req, res){
 var urfids = [];
 function apiFunc(req, res){
 	var dat = Object.assign(req.query, req.body);
+	var errfunc = function(inp){ res.send(JSON.stringify(inp)); };
 	if(dat.action == "rfidevent"){
 		var rf = req.body; //{node:"", time:"", id:""}
 		
@@ -365,7 +361,6 @@ function apiFunc(req, res){
 		
 		console.log(rf.id, fulldate, fulltime, rf.node);
 		
-		var errfunc = function(inp){ res.send(JSON.stringify(inp)); }
 		mysqlquery("SELECT sid from scannerdb WHERE devid=?",[rf.node],function(result1){
 			if(result1.length > 0){
 				mysqlquery("SELECT uid from userdb WHERE rfid=?",[rf.id],function(result2){
@@ -431,20 +426,17 @@ function apiFunc(req, res){
 				}
 			}
 			if(!("notjustnull" in dat)) query += " AND tend IS NULL";
-			var errfunc = function(inp){ res.send(JSON.stringify(inp)); };
 			mysqlquery(query,queryparms,function(result){
 				res.send(JSON.stringify(result));
 			},"getclocks",errfunc,errfunc,errfunc);
 		}
 		else if(dat.action == "addclocks"){
 			var query = "INSERT INTO daydb (uid, day, tstart) VALUES (?,?,?)";
-			var errfunc = function(inp){ res.send(JSON.stringify(inp)); };
 			mysqlquery(query,[req.session.user.uid,dat.date,dat.time],function(result){
 				res.send(JSON.stringify(result));
 			},"addclocks",errfunc,errfunc,errfunc);
 		}
 		else if(dat.action == "editclocks"){
-			var errfunc = function(inp){ res.send(JSON.stringify(inp)); };
 			if(["day","tstart","tend"].indexOf(dat.tag) >= 0){
 				var query = "UPDATE daydb SET "+dat.tag+"=?, hours=TIME_TO_SEC(TIMEDIFF(tend,tstart))/3600 WHERE did=? AND uid=?";
 				var queryparms = [dat.value,dat.did];
@@ -492,20 +484,17 @@ function apiFunc(req, res){
 					queryparms.push(dat.todid);
 				}
 			}
-			var errfunc = function(inp){ res.send(JSON.stringify(inp)); };
 			mysqlquery(query,queryparms,function(result){
 				res.send(JSON.stringify(result));
 			},"getworks",errfunc,errfunc,errfunc);
 		}
 		else if(dat.action == "addworks"){
 			var query = "INSERT INTO workdb (uid, did, pid, description, tstart, tend) VALUES (?,?,?,?,?,?)";
-			var errfunc = function(inp){ res.send(JSON.parse(inp)); };
 			mysqlquery(query,[req.session.user.uid, dat.did, dat.pid, dat.desc, dat.tstart, dat.tend],function(result){
 				res.send(JSON.stringify(result));
 			},"addworks",errfunc,errfunc,errfunc,);
 		}
 		else if(dat.action == "editworks"){
-			var errfunc = function(inp){ res.send(JSON.stringify(inp)); };
 			if(["tstart","tend","pid","description"].indexOf(dat.tag) >= 0){
 				var query = "UPDATE workdb SET "+dat.tag+"=? WHERE wid=? AND uid=?";
 				var queryparms = [dat.value,dat.wid];
@@ -529,7 +518,6 @@ function apiFunc(req, res){
 			else query += "*";
 			query += " FROM projdb";
 			if("active" in dat) query += " WHERE active=1";
-			var errfunc = function(inp){ res.send(JSON.stringify(inp)); };
 			mysqlquery(query,[],function(result){
 				res.send(JSON.stringify(result));
 			},"getprojs",errfunc,errfunc,errfunc);
@@ -540,7 +528,6 @@ function apiFunc(req, res){
 				var queryparms = [dat.title, dat.desc];
 				if("active" in dat) queryparms.push(dat.active);
 				else queryparms.push(1);
-				var errfunc = function(inp){ res.send(JSON.stringify(inp)); };
 				mysqlquery(query,queryparms,function(result){
 					res.send(JSON.stringify(result));
 				},"addprojs",errfunc,errfunc,errfunc);
@@ -554,7 +541,6 @@ function apiFunc(req, res){
 			if(req.session.user.admin){
 				if(["title","description","active"].indexOf(dat.tag) >= 0){
 					var query = "UPDATE projdb SET "+dat.tag+"=? WHERE pid=?";
-					var errfunc = function(inp){ res.send(JSON.stringify(inp)); };
 					mysqlquery(query,[dat.value, dat.pid],function(result){
 						res.send(JSON.stringify(result));
 					},"editprojs",errfunc,errfunc,errfunc);
@@ -566,7 +552,6 @@ function apiFunc(req, res){
 			}
 		}
 		else if(dat.action == "gethours"){
-			var errfunc = function(inp){ res.send(JSON.stringify(inp)); };
 			var query = "did,day,hours,tstart,tend FROM daydb";
 			var queryparms = [];
 			if("allemployees" in dat){
@@ -617,7 +602,6 @@ function apiFunc(req, res){
 			//implement queries
 			if(req.session.user.admin){
 				var query = "SELECT uid,email,fname,lname,wage,days,picture FROM userdb";
-				var errfunc = function(inp){ res.send(JSON.stringify(inp)); };
 				mysqlquery(query,[],function(result){
 					res.send(JSON.stringify(result));
 				},"getemployees",errfunc,errfunc,errfunc);
@@ -631,7 +615,6 @@ function apiFunc(req, res){
 			if(req.session.user.admin){
 				var query = "SELECT * FROM rfiddb WHERE 1";
 				var queryparms = [];
-				var errfunc = function(inp){ res.send(JSON.stringify(inp)); };
 				if("uid" in dat){
 					query += " AND uid=?";
 					queryparms.push(dat.uid);
@@ -673,7 +656,6 @@ function apiFunc(req, res){
 				if("noloc" in dat) query += "sid,name"
 				else query += "*";
 				query += " FROM scannerdb";
-				var errfunc = function(inp){ res.send(JSON.stringify(inp)); };
 				mysqlquery(query,[],function(result){
 					res.send(JSON.stringify(result));
 				},"getscanners",errfunc,errfunc,errfunc);
@@ -687,7 +669,6 @@ function apiFunc(req, res){
 			if(req.session.user.admin){
 				var query = "INSERT INTO scannerdb (devid, name, location) VALUES (?,?,?)";
 				var queryparms = [dat.devid, dat.name, dat.location];
-				var errfunc = function(inp){ res.send(JSON.stringify(inp)); };
 				mysqlquery(query,queryparms,function(result){
 					res.send(JSON.stringify(result));
 				},"addscanners",errfunc,errfunc,errfunc);
@@ -701,7 +682,6 @@ function apiFunc(req, res){
 			if(req.session.user.admin){
 				if(["devid","name","location"].indexOf(dat.tag) >= 0){
 					var query = "UPDATE scannerdb SET "+dat.tag+"=? WHERE sid=?";
-					var errfunc = function(inp){ res.send(JSON.stringify(inp)); };
 					mysqlquery(query,[dat.value, dat.sid],function(result){
 						res.send(JSON.stringify(result));
 					},"editscanners",errfunc,errfunc,errfunc);

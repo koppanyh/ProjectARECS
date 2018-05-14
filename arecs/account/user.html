@@ -481,7 +481,10 @@
 				console.log("Clock/works:", works);
 				lock4 = true;
 			});
-		} else lock4 = true;
+		} else{
+			ractive.set({hstart: getdate(), hend: getdate()});
+			lock4 = true;
+		}
 		console.log("Clocks:", res);
 		lock3 = true;
 	});
