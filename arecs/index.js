@@ -492,7 +492,7 @@ function apiFunc(req, res){
 			var query = "INSERT INTO workdb (uid, did, pid, description, tstart, tend) VALUES (?,?,?,?,?,?)";
 			mysqlquery(query,[req.session.user.uid, dat.did, dat.pid, dat.desc, dat.tstart, dat.tend],function(result){
 				res.send(JSON.stringify(result));
-			},"addworks",errfunc,errfunc,errfunc,);
+			},"addworks",errfunc,errfunc,errfunc);
 		}
 		else if(dat.action == "editworks"){
 			if(["tstart","tend","pid","description"].indexOf(dat.tag) >= 0){
