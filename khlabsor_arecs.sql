@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Generation Time: May 19, 2018 at 11:31 PM
+-- Generation Time: May 21, 2018 at 05:00 AM
 -- Server version: 10.1.32-MariaDB
 -- PHP Version: 5.6.30
 
@@ -67,7 +67,9 @@ INSERT INTO `daydb` (`did`, `uid`, `day`, `tstart`, `tend`, `hours`) VALUES
 (23, 1, '2018-05-13', '16:39:00.000000', '22:11:00.000000', 5.53333),
 (24, 1, '2018-05-14', '15:36:00.000000', '19:00:00.000000', 3.4),
 (25, 1, '2018-05-15', '16:36:00.000000', '17:37:00.000000', 1.01667),
-(26, 1, '2018-05-17', '18:14:00.000000', '20:11:00.000000', 1.95);
+(26, 1, '2018-05-17', '18:14:00.000000', '20:11:00.000000', 1.95),
+(27, 1, '2018-05-19', '16:36:00.000000', '23:37:00.000000', 7.01667),
+(28, 1, '2018-05-20', '13:45:00.000000', '21:54:00.000000', 8.15);
 
 -- --------------------------------------------------------
 
@@ -89,7 +91,8 @@ CREATE TABLE `projdb` (
 INSERT INTO `projdb` (`pid`, `title`, `description`, `active`) VALUES
 (1, 'Siemens', 'Work done for Siemens', 1),
 (2, 'KMC Controls', 'Work done for KCM Controls', 0),
-(3, 'EasyIO', 'Work done for EasyIO', 1);
+(3, 'EasyIO', 'Work done for EasyIO', 1),
+(4, 'Senior Project', 'Work done for the senior project', 1);
 
 -- --------------------------------------------------------
 
@@ -123,7 +126,15 @@ INSERT INTO `rfiddb` (`rid`, `uid`, `sid`, `day`, `time`) VALUES
 (11, 1, 1, '2018-04-28', '15:10:00'),
 (12, 1, 1, '2018-04-28', '17:23:00'),
 (13, 1, 1, '2018-04-28', '21:01:00'),
-(14, 1, 1, '2018-05-13', '16:39:00');
+(14, 1, 1, '2018-05-13', '16:39:00'),
+(15, 1, 1, '2018-05-19', '23:37:00'),
+(16, 1, 1, '2018-05-19', '23:37:00'),
+(17, 1, 1, '2018-05-20', '13:45:00'),
+(18, 1, 1, '2018-05-20', '21:18:00'),
+(19, 1, 1, '2018-05-20', '21:18:00'),
+(20, 1, 1, '2018-05-20', '21:19:00'),
+(21, 1, 1, '2018-05-20', '21:19:00'),
+(22, 1, 1, '2018-05-20', '21:19:00');
 
 -- --------------------------------------------------------
 
@@ -272,7 +283,10 @@ INSERT INTO `workdb` (`wid`, `uid`, `did`, `pid`, `description`, `tstart`, `tend
 (75, 1, 25, 0, 'worked on report', '16:36:00.000000', '17:07:00.000000'),
 (76, 1, 25, 0, 'lunch break', '17:08:00.000000', '17:35:00.000000'),
 (77, 1, 25, 0, 'went to class', '17:36:00.000000', '17:37:00.000000'),
-(78, 1, 26, 0, 'worked on report', '18:14:00.000000', '18:15:00.000000');
+(78, 1, 26, 0, 'worked on report', '18:14:00.000000', '18:15:00.000000'),
+(79, 1, 27, 0, 'worked on setting up raspberry pi demo', '16:36:00.000000', '18:02:00.000000'),
+(80, 1, 27, 0, 'worked on report', '18:30:00.000000', '23:35:00.000000'),
+(81, 1, 28, 4, 'worked on report', '13:48:00.000000', '21:53:00.000000');
 
 --
 -- Indexes for dumped tables
@@ -322,19 +336,19 @@ ALTER TABLE `workdb`
 -- AUTO_INCREMENT for table `daydb`
 --
 ALTER TABLE `daydb`
-  MODIFY `did` int(5) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=27;
+  MODIFY `did` int(5) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=29;
 
 --
 -- AUTO_INCREMENT for table `projdb`
 --
 ALTER TABLE `projdb`
-  MODIFY `pid` int(5) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `pid` int(5) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT for table `rfiddb`
 --
 ALTER TABLE `rfiddb`
-  MODIFY `rid` int(5) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
+  MODIFY `rid` int(5) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=23;
 
 --
 -- AUTO_INCREMENT for table `scannerdb`
@@ -352,7 +366,7 @@ ALTER TABLE `userdb`
 -- AUTO_INCREMENT for table `workdb`
 --
 ALTER TABLE `workdb`
-  MODIFY `wid` int(5) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=79;
+  MODIFY `wid` int(5) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=82;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
