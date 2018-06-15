@@ -1,0 +1,41 @@
+<!DOCTYPE HTML>
+<html>
+	<head>
+		<title>ARECS - Login</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<link rel="icon" href="/images/stop-watch.png">
+		<style>
+			input {
+				width: 300px;
+			}
+			#cont {
+				text-align: center;
+			}
+			#err {
+				color: red;
+			}
+		</style>
+	</head>
+	<body>
+		<div id="cont">
+			<img src="/images/logo.png" style="max-height: 50px"><br>
+			<span id="err"></span>
+			<form action="/account" method="POST">
+				<input type="email" name="email" placeholder="Email" autofocus><br>
+				<input type="password" name="passw" placeholder="Password"><br>
+				<input type="hidden" name="action" value="login">
+				<input type="submit" value="Login">
+			</form>
+		</div>
+	</body>
+</html>
+<script>
+	var errs = document.getElementById("err");
+	if(document.location.search.includes("err1"))
+		errs.innerHTML = "Email not found";
+	else if(document.location.search.includes("err2"))
+		errs.innerHTML = "Password is incorrect";
+	else if(document.location.search.includes("err3"))
+		errs.innerHTML = "Login Database Connection Error";
+</script>

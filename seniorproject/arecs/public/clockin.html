@@ -1,0 +1,382 @@
+<!DOCTYPE HTML>
+<html>
+	<head>
+		<title>ARECS - Clock In</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<link rel="icon" href="/images/stop-watch.png">
+		<link rel="stylesheet" type="text/css" href="/style.css">
+		<script type="text/javascript" src="/ractive.js"></script>
+		<script type="text/javascript" src="/core.js"></script>
+		<style>
+			.clockbut {
+				border: 1px solid black;
+				border-radius: 100%;
+				width: 100px;
+				height: 100px;
+				text-align: center;
+				display: inline-block;
+			}
+			.cltext {
+				font-weight: bold;
+				margin-top: 40px;
+				display: block;
+			}
+			input {
+				width: 100%;
+				box-sizing: border-box;
+			}
+		</style>
+	</head>
+	<body id="body"></body>
+</html>
+
+<script id="template" type="text/ractive">
+	<nav>
+		<img id="logo" src="/images/logo.png">
+		<a href="/account/user.html"><img id="profilepic" src="/userpics/{{ppic}}"></a><br>
+		{{#if isAdmin}}<a href="/users.html">Manage Employees</a>
+		&nbsp;&nbsp;<a href="/settings.html">Settings</a>
+		{{/if}}
+	</nav>
+	
+	<div style="text-align: center">
+		{{#if .clocked}}
+		<div class="clockbut" style="background-color: #F85" on-click="clockout">
+			<span class="cltext">Clock Out<span>
+		</div><br><br>
+		
+		<p>Clocked in at {{clockintime}}</p>
+		<p>Estimated hours for today: {{estimhours.toFixed(2)}}</p>
+		<p>Estimated leave time at {{leavetime}}</p>
+		<br>
+		
+		<div style="width: 90%; margin: auto">
+			<input type="text" id="desc" style="width: calc(100% - 10em)" autofocus value="{{tmpdesc}}">
+			<button style="float: right; width: 10em" on-click="description">Add Description</button>
+			<div style="width: 32%; display: inline-block">
+				Start Time
+				<input id="tst" type="time" style="width: auto" value="{{tmpstart}}">
+				<button id="tmpstart" on-click="nowtime">Now</button>
+			</div>
+			<div style="width: 32%; display: inline-block">
+				End Time
+				<input id="ten" type="time" style="width: auto" value="{{tmpend}}">
+				<button id="tmpend" on-click="nowtime">Now</button>
+			</div>
+			<div style="width: 32%; display: inline-block">
+				Project
+				<select value="{{selproj}}">
+					{{#each .projs}}{{#if .active}}<option value={{.pid}}>{{.title}}</option>{{/if}}{{/each}}
+				</select>
+			</div>
+		</div><br><br>
+	
+		Today's work:<br>
+		<table border="1">
+			{{#if .today.length > 0}}<tr>
+				<th>Start</th>
+				<th>End</th>
+				<th>Project</th>
+				<th>Descrption</th>
+			</tr>{{/if}}
+			{{#each .today}}<tr>
+				<td on-click="editstart" style="min-width: 4em" class="editable">
+					{{#if .estart}}<input type="time" value="{{.tstart}}">
+					{{else}}{{.tstart}}{{/if}}
+				</td>
+				<td on-click="editend" style="min-width: 4em" class="editable">
+					{{#if .eend}}<input type="time" value="{{.tend}}">
+					{{else}}{{.tend}}{{/if}}
+				</td>
+				<td on-click="editprj" style="min-width: 6em" class="editable">
+					{{#if .eprj}}<select value="{{.pid}}" style="width: 100%">
+						{{#each projs}}{{#if .active}}<option value={{.pid}}>{{.title}}</option>{{/if}}{{/each}}
+					</select>
+					{{else}}{{projs2[.pid]}}{{/if}}
+				</td>
+				<td on-click="editwork" style="width: 100%; text-align: left" class="editable">
+					{{#if .edesc}}<input type="text" value="{{.description}}">
+					{{else}}{{.description}}{{/if}}
+				</td>
+			</tr>{{else}}<tr><td>No work yet</td></tr>{{/each}}
+		</table><br>
+		
+		{{#if .editing}}
+		<button on-click="canceledit">Cancel</button>
+		<button on-click="doneedit">Save Changes</button>
+		{{/if}}
+		
+		{{else}}
+		<br><br><br><br><br><br>
+		<div class="clockbut" style="background-color: #8F5" on-click="clockin">
+			<span class="cltext">Clock In<span>
+		</div><br><br>
+		{{#if .totaltime > 0}}
+		<p>Clocked in at {{clockintime}}</p>
+		<p>Clocked out at {{clockouttime}}</p>
+		<p>Worked for {{totaltime.toFixed(2)}} hours</p>
+		{{/if}}
+		{{/if}}
+	</div><br><br>
+	
+	<div on-click="closemodal" style="display: {{modla}}">
+		<div class="modal"></div>
+		<img src="/images/loading.gif" class="loading">
+	</div>
+</script>
+
+<script>
+	var userdict = {};
+	var ractive = null;
+	var did = 0;
+	
+	function EUC(inp){ return encodeURIComponent(inp); }
+	function pushedit(){
+		if(ractive.get("currentedit") != null){
+			ractive.set("modla", "");
+			var wdict = ractive.get("currentedit");
+			ractive.set("currentedit", null);
+			var ind = ractive.get("today").findIndex(function(itm){ return itm.wid == wdict.wid; });
+			ractive.set("today["+ind+"]."+wdict.edit, undefined);
+			var entry = [
+				wdict.wid,
+				wdict.tag,
+				EUC(ractive.get("today["+ind+"]."+wdict.tag))
+			];
+			httpRequest("POST","/api?action=editworks","wid="+entry[0]+"&tag="+entry[1]+"&value="+entry[2],function(http){
+				var outp = JSON.parse(http.responseText);
+				checkError(outp);
+				console.log("OUTPUT:", outp);
+				ractive.set("modla","none");
+			});
+			console.log("Pushing to server", entry);
+		}
+	}
+	
+	ractive = new Ractive({
+		target: '#body',
+		template: '#template',
+		data: {
+			modla: "",
+			isAdmin: false,
+			ppic: "user.png",
+			clocked: false,
+			clockintime: "09:00",
+			estimhours: 8,
+			leavetime: "17:00",
+			clockouttime: "",
+			totaltime: 0,
+			editing: false,
+			tmpstart: gettime(),
+			tmpend: gettime(),
+			tmpdesc: "",
+			selproj: 0,
+			today: [], //{wid: 1, pid: 1, tstart: "", tend: "", description: ""}
+			projs: [{pid: 0, title: "None"}],
+			projs2: {0: ""},
+			currentedit: null //{wid: 1, tag: "tstart", edit: "estart"}
+		},
+		oninit: function(){
+			this.on("clockin", function(event){
+				this.set("modla","");
+				var ract = this;
+				var dt = new Date();
+				dt.setSeconds(0);
+				var dat = getdate(dt);
+				this.set("clockintime", gettime(dt));
+				dt.setTime(dt.getTime() + this.get("estimhours")*3600*1000);
+				this.set("leavetime", gettime(dt));
+				httpRequest("POST","/api?action=addclocks","date="+dat+"&time="+EUC(this.get("clockintime")),function(http){
+					var outp = JSON.parse(http.responseText);
+					checkError(outp);
+					did = outp.insertId;
+					console.log("OUTPUT:", outp);
+					ract.set("clocked", true);
+					ract.set("modla","none");
+				});
+				console.log("User clocked in at", dat, this.get("clockintime"));
+			});
+			this.on("clockout", function(event){
+				this.set("modla","");
+				var ract = this;
+				var dt = new Date();
+				dt.setSeconds(0);
+				this.set("clockouttime", gettime(dt));
+				var du = new Date();
+				var dv = this.get("clockintime").split(":");
+				du.setHours(dv[0]);
+				du.setMinutes(dv[1]);
+				du.setSeconds(0);
+				this.set("totaltime", (dt - du) / 3600000);
+				httpRequest("POST","/api?action=editclocks","did="+did+"&tag=tend&value="+EUC(gettime(dt)),function(http){
+					var outp = JSON.parse(http.responseText);
+					checkError(outp);
+					console.log("OUTPUT:", outp);
+					ract.set("clocked",false);
+					ract.set("modla","none");
+				});
+				console.log("User clocked out at", did, gettime(dt));
+			});
+			this.on("closemodal", function(event){
+				//this.set("modla", "none");
+			});
+			
+			this.on("description", function(event){
+				if(this.get("tmpdesc").trim() != ""){
+					this.set("modla","");
+					var ract = this;
+					var entry = {
+						did: did,
+						pid: this.get("selproj"),
+						tstart: this.get("tmpstart"),
+						tend: this.get("tmpend"),
+						description: this.get("tmpdesc")
+					};
+					httpRequest("POST","/api?action=addworks","did="+entry.did+
+						"&pid="+entry.pid+"&tstart="+EUC(entry.tstart)+"&tend="+
+						EUC(entry.tend)+"&desc="+EUC(entry.description),function(http){
+						var outp = JSON.parse(http.responseText);
+						checkError(outp);
+						console.log("OUTPUT:",outp);
+						entry.wid = outp.insertId;
+						ract.push("today", entry);
+						ract.set("modla","none");
+					});
+					console.log("User added new entry", entry);
+					this.set({
+						tmpstart: gettime(),
+						tmpend: gettime(),
+						tmpdesc: ""
+					});
+				}
+			});
+			this.on("nowtime", function(event){
+				this.set(event.node.id, gettime());
+			});
+			
+			this.on("editstart", function(event){
+				if(!event.get("estart")){
+					pushedit();
+					this.set("editing", true);
+					event.set("estart", true);
+					this.set("currentedit", {org: event.get("tstart"),
+						wid: event.get("wid"), tag: "tstart", edit: "estart"});
+				}
+			});
+			this.on("editend", function(event){
+				if(!event.get("eend")){
+					pushedit();
+					this.set("editing", true);
+					event.set("eend", true);
+					this.set("currentedit", {org: event.get("tend"),
+						wid: event.get("wid"), tag: "tend", edit: "eend"});
+				}
+			});
+			this.on("editprj", function(event){
+				if(!event.get("eprj")){
+					pushedit();
+					this.set("editing", true);
+					event.set("eprj", true);
+					this.set("currentedit", {org: event.get("pid"),
+						wid: event.get("wid"), tag: "pid", edit: "eprj"});
+				}
+			});
+			this.on("editwork", function(event){
+				if(!event.get("edesc")){
+					pushedit();
+					this.set("editing", true);
+					event.set("edesc", true);
+					this.set("currentedit", {org: event.get("description"),
+						wid: event.get("wid"), tag: "description", edit: "edesc"});
+				}
+			});
+			this.on("doneedit", function(event){
+				this.set("editing", false);
+				pushedit();
+			});
+			this.on("canceledit", function(event){
+				var cured = this.get("currentedit");
+				var ind = this.get("today").findIndex(function(itm){ return itm.wid == cured.wid });
+				this.set("today["+ind+"]."+cured.edit, undefined);
+				this.set("today["+ind+"]."+cured.tag, cured.org);
+				this.set("currentedit", null);
+				this.set("editing", false);
+			});
+		}
+	});
+	
+	var lock1 = false;
+	httpRequest("POST","/account","action=getuser",function(http){
+		if(http.responseText == "") document.location = "/account/logout";
+		else{
+			userdict = JSON.parse(http.responseText);
+			if(checkError(userdict)) document.location = "/account/logout";
+			ractive.set("ppic", userdict.picture);
+			ractive.set("isAdmin", userdict.admin);
+			console.log(userdict);
+			var wkday = (new Date()).getDay();
+			if(userdict.days[wkday] == undefined) ractive.set("estimhours", 8);
+			else ractive.set("estimhours", userdict.days[wkday][0]);
+		}
+		lock1 = true;
+	});
+	
+	var lock2 = false;
+	httpRequest("GET","/api?action=getprojs&nodesc","",function(http){
+		if(http.responseText != ""){
+			var pjs = JSON.parse(http.responseText);
+			checkError(pjs);
+			pjs.unshift({pid: 0, title: "None", active: 1});
+			ractive.set("projs", pjs);
+			var pjs2 = {};
+			pjs.forEach(function(itm){ pjs2[itm.pid] = itm.title; });
+			pjs2[0] = "";
+			ractive.set("projs2", pjs2);
+		}
+		lock2 = true;
+	});
+	
+	var lock3 = false;
+	var lock4 = false;
+	httpRequest("GET","/api?action=getclocks&date="+getdate(),"",function(http){
+		if(http.responseText != ""){
+			var ans = JSON.parse(http.responseText);
+			checkError(ans);
+			console.log("Clock:", ans);
+			if(ans.length > 0){
+				ans = ans[0];
+				did = ans.did;
+				ractive.set("clocked", true);
+				var t = trimtime(ans.tstart);
+				ractive.set("clockintime", t);
+				if(ans.hours > 0) ractive.set("estimhours", ans.hours);
+				t = addhours(t, ractive.get("estimhours"));
+				ractive.set("leavetime", t);
+				
+				httpRequest("GET","/api?action=getworks&did="+did,"",function(http){
+					if(http.responseText != ""){
+						var ans = JSON.parse(http.responseText);
+						checkError(ans);
+						ans = ans.map(function(itm){
+							itm.tstart = trimtime(itm.tstart);
+							itm.tend = trimtime(itm.tend);
+							return itm;
+						});
+						console.log("Works:", ans);
+						ractive.set("today", ans);
+					}
+					lock4 = true;
+				});
+			} else lock4 = true;
+		}
+		lock3 = true;
+	});
+	
+	var modalIntv = setInterval(function(){
+		if(lock1 && lock2 && lock3 && lock4){
+			ractive.set("modla", "none");
+			clearInterval(modalIntv);
+		}
+	}, 250);
+</script>

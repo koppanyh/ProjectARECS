@@ -1,0 +1,419 @@
+<!DOCTYPE HTML>
+<html>
+	<head>
+		<title>ARECS - Settings</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<link rel="icon" href="/images/stop-watch.png">
+		<link rel="stylesheet" type="text/css" href="/style.css">
+		<script type="text/javascript" src="/ractive.js"></script>
+		<script type="text/javascript" src="/core.js"></script>
+		<style>
+			input[type=text] {
+				width: 100%;
+				box-sizing: border-box;
+			}
+		</style>
+	</head>
+	<body id="body"></body>
+</html>
+
+<script id="template" type="text/ractive">
+	<nav>
+		<img id="logo" src="/images/logo.png">
+		<a href="/account/user.html"><img id="profilepic" src="/userpics/{{user.picture}}"></a><br>
+		<a href="/">Home</a>&nbsp;&nbsp;
+		<a href="/users.html">Manage Employees</a>
+	</nav>
+	
+	<div style="text-align: center">
+		<b>Projects:</b><button on-click="addproj">+</button><br>
+		<table border="1">
+			{{#if .projs.length > 0}}<tr>
+				<th>ID</th>
+				<th>Title</th>
+				<th>Active</th>
+				<th>Descrption</th>
+			</tr>{{/if}}
+			{{#each .projs}}<tr>
+				<td style="min-width: 4em">{{.pid}}</td>
+				<td class="editable" on-click="edittitle" style="min-width: 6em">
+					{{#if !.etitle}}{{.title}}{{else}}
+					<input type="text" value="{{.title}}">{{/if}}
+				</td>
+				<td class="editable" on-click="editactive" style="min-width: 4em">
+					{{#if !.eactive}}{{#if .active == 1}}Yes{{else}}No{{/if}}{{else}}
+					<select value="{{.active}}" style="width: 100%">
+						<option value="1">Yes</option>
+						<option value="0">No</option>
+					</select>{{/if}}
+				</td>
+				<td class="editable" on-click="editdesc" style="width: 100%; text-align: left">
+					{{#if !.edescription}}{{.description}}{{else}}
+					<input type="text" value="{{.description}}">{{/if}}
+				</td>
+			</tr>{{else}}<tr><td>No projects yet</td></tr>{{/each}}
+		</table><br>
+		{{#if currentedit1 != null}}
+		<button on-click="canceledit1">Cancel</button>
+		<button on-click="doneedit1">Save Changes</button><br>
+		{{/if}}<br><br>
+		
+		<b>RFID Scanners:</b><button on-click="addscan">+</button><br>
+		<table border="1">
+			{{#if .scans.length > 0}}<tr>
+				<th>ID</th>
+				<th>Name</th>
+				<th>Serial Number</th>
+				<th>Location</th>
+			</tr>{{/if}}
+			{{#each .scans}}<tr>
+				<td style="min-width: 4em">{{.sid}}</td>
+				<td class="editable" on-click="editname" style="min-width: 6em">
+					{{#if !.ename}}{{.name}}{{else}}
+					<input type="text" value="{{.name}}">{{/if}}
+				</td>
+				<td class="editable" on-click="editdevid" style="min-width: 10em">
+					{{#if !.edevid}}{{.devid}}{{else}}
+					<input type="text" value="{{.devid}}">{{/if}}
+				</td>
+				<td class="editable" on-click="editloc" style="width: 100%; text-align: left">
+					{{#if !.elocation}}{{.location}}{{else}}
+					<input type="text" value="{{.location}}">{{/if}}
+				</td>
+			</tr>{{else}}<tr><td>No scanners registered</td></tr>{{/each}}
+		</table><br>
+		{{#if currentedit2 != null}}
+		<button on-click="canceledit2">Cancel</button>
+		<button on-click="doneedit2">Save Changes</button><br>
+		{{/if}}<br><br>
+		
+		<b>RFID Events:<br>
+		<input type="date" value="{{rstart}}"> to <input type="date" value="{{rend}}">
+		<button on-click="rfidsearch">Search</button></b><br>
+		<table border="1">
+			{{#if .rfids.length > 0}}<tr>
+				<th>Day</th>
+				<th>Time</th>
+				<th>User</th>
+				<th>Scanner</th>
+			</tr>{{/if}}
+			{{#each .rfids}}<tr>
+				<td style="min-width: 6em">{{.day}}</td>
+				<td style="min-width: 4em">{{.time}}</td>
+				<td style="min-width: 10em">{{employees[.uid]}}</td>
+				<td style="width: 100%; text-align: left">{{scans2[.sid]}}</td>
+			</tr>{{else}}<tr><td>No RFID events yet</td></tr>{{/each}}
+		</table><br><br>
+		
+		<b>Restricted API Incidents:</b><br>
+		<table border="1">
+			{{#if .incids.length > 0}}<tr>
+				<th>Day</th>
+				<th>Time</th>
+				<th>API Call</th>
+				<th>User</th>
+			</tr>{{/if}}
+			{{#each .incids}}<tr>
+				<td style="min-width: 6em">{{.day}}</td>
+				<td style="min-width: 4em">{{.time}}</td>
+				<td style="min-width: 10em">{{.api}}</td>
+				<td style="width: 100%; text-align: left">{{employees[.uid]}}</td>
+			</tr>{{else}}<tr><td>No restricted API incidents</td></tr>{{/each}}
+		</table><br><br>
+		
+		<b>Unregistered RFID Events:</b><br>
+		<table border="1">
+			{{#if .urfids.length > 0}}<tr>
+				<th>Day</th>
+				<th>Time</th>
+				<th>Card</th>
+				<th>Scanner</th>
+			</tr>{{/if}}
+			{{#each .urfids}}<tr>
+				<td style="min-width: 6em">{{.day}}</td>
+				<td style="min-width: 4em">{{.time}}</td>
+				<td style="min-width: 10em">{{.card}}</td>
+				<td style="width: 100%; text-align: left">{{scans2[.node] || "*"+.node}}</td>
+			</tr>{{else}}<tr><td>No unregistered RFID events</td></tr>{{/each}}
+		</table>
+	</div><br><br>
+	
+	<div on-click="closemodal" style="display: {{modla}}">
+		<div class="modal"></div>
+		<img src="/images/loading.gif" class="loading">
+	</div>
+</script>
+
+<script>
+	var userdict = {};
+	var ractive = null;
+	
+	function pushedit1(){
+		var cedit = ractive.get("currentedit1");
+		if(cedit != null){
+			ractive.set("modla", "");
+			var i = ractive.get("projs").findIndex(function(itm){
+				return itm.pid == cedit.pid;
+			});
+			var data = ractive.get("projs["+i+"]."+cedit.tag);
+			var req = "/api?action=editprojs&pid="+cedit.pid+"&tag="+cedit.tag;
+			req += "&value=" + encodeURIComponent(data);
+			httpRequest("GET",req,"",function(http){
+				var resp = JSON.parse(http.responseText);
+				checkError(resp);
+				console.log("Editprojs:", resp);
+				ractive.set("modla", "none");
+			});
+			console.log(data, cedit, req);
+			ractive.set("projs["+i+"].e"+cedit.tag, undefined);
+			ractive.set("currentedit1", null);
+		}
+	}
+	function pushedit2(){
+		var cedit = ractive.get("currentedit2");
+		if(cedit != null){
+			ractive.set("modla", "");
+			var i = ractive.get("scans").findIndex(function(itm){
+				return itm.sid == cedit.sid;
+			});
+			ractive.set("scans2["+cedit.sid+"]", ractive.get("scans["+i+"].name"));
+			var data = ractive.get("scans["+i+"]."+cedit.tag);
+			var req = "/api?action=editscanners&sid="+cedit.sid+"&tag="+cedit.tag;
+			req += "&value=" + encodeURIComponent(data);
+			httpRequest("GET",req,"",function(http){
+				var resp = JSON.parse(http.responseText);
+				checkError(resp);
+				console.log("Editscans:", resp);
+				ractive.set("modla", "none");
+			});
+			console.log(data, cedit, req);
+			ractive.set("scans["+i+"].e"+cedit.tag, undefined);
+			ractive.set("currentedit2", null);
+		}
+	}
+	
+	ractive = new Ractive({
+		target: '#body',
+		template: '#template',
+		data: {
+			modla: "",
+			user: {picture: "user.png"},
+			projs: [],
+			scans: [],
+			scans2: {},
+			employees: {},
+			rfids: [],
+			urfids: [],
+			rstart: getdate(),
+			rend: getdate(),
+			currentedit1: null,
+			currentedit2: null,
+			incids: []
+		},
+		oninit: function(){
+			this.on("closemodal", function(event){
+				//this.set("modla", "none");
+			});
+			
+			this.on("addproj", function(event){
+				this.set("modla", "");
+				httpRequest("GET","/api?action=addprojs&title=New%20Project&desc=New%20Project&active=0","",function(http){
+					var resp = JSON.parse(http.responseText);
+					checkError(resp);
+					ractive.push("projs", {pid: resp.insertId, title: "New Project", active: 0, description: "New Project"});
+					ractive.set("modla", "none");
+					console.log("Addproj:", resp);
+				});
+			});
+			this.on("edittitle", function(event){
+				var a = event.get();
+				if(!a.etitle){
+					pushedit1();
+					this.set("currentedit1", {pid: a.pid, tag: "title", orig: a.title});
+					event.set("etitle", true);
+				}
+			});
+			this.on("editactive", function(event){
+				var a = event.get();
+				if(!a.eactive){
+					pushedit1();
+					this.set("currentedit1", {pid: a.pid, tag: "active", orig: a.active});
+					event.set("eactive", true);
+				}
+			});
+			this.on("editdesc", function(event){
+				var a = event.get();
+				if(!a.edescription){
+					pushedit1();
+					this.set("currentedit1", {pid: a.pid, tag: "description", orig: a.description});
+					event.set("edescription", true);
+				}
+			});
+			this.on("canceledit1", function(event){
+				var cedit = this.get("currentedit1");
+				var i = this.get("projs").findIndex(function(itm){
+					return itm.pid == cedit.pid;
+				});
+				this.set("projs["+i+"]."+cedit.tag, cedit.orig);
+				this.set("projs["+i+"].e"+cedit.tag, undefined);
+				this.set("currentedit1", null);
+			});
+			this.on("doneedit1", function(event){
+				pushedit1();
+			});
+			
+			this.on("addscan", function(event){
+				this.set("modla", "");
+				httpRequest("GET","/api?action=addscanners&devid=000000000000&name=New%20Node&location=New%20Node","",function(http){
+					var resp = JSON.parse(http.responseText);
+					checkError(resp);
+					ractive.push("scans", {sid: resp.insertId, name: "New Node", devid: "000000000000", location: "New Node"});
+					ractive.set("modla", "none");
+					console.log("Addscan:", resp);
+				});
+			});
+			this.on("editname", function(event){
+				var a = event.get();
+				if(!a.ename){
+					pushedit2();
+					this.set("currentedit2", {sid: a.sid, tag: "name", orig: a.name});
+					event.set("ename", true);
+				}
+			});
+			this.on("editdevid", function(event){
+				var a = event.get();
+				if(!a.edevid){
+					pushedit2();
+					this.set("currentedit2", {sid: a.sid, tag: "devid", orig: a.devid});
+					event.set("edevid", true);
+				}
+			});
+			this.on("editloc", function(event){
+				var a = event.get();
+				if(!a.elocation){
+					pushedit2();
+					this.set("currentedit2", {sid: a.sid, tag: "location", orig: a.location});
+					event.set("elocation", true);
+				}
+			});
+			this.on("canceledit2", function(event){
+				var cedit = this.get("currentedit2");
+				var i = this.get("scans").findIndex(function(itm){
+					return itm.sid == cedit.sid;
+				});
+				this.set("scans["+i+"]."+cedit.tag, cedit.orig);
+				this.set("scans["+i+"].e"+cedit.tag, undefined);
+				this.set("currentedit2", null);
+			});
+			this.on("doneedit2", function(event){
+				pushedit2();
+			});
+			
+			this.on("rfidsearch", function(event){
+				this.set("modla","");
+				httpRequest("GET","/api?action=getrfidevents&fromday="+this.get("rstart")+"&today="+this.get("rend"),"",function(http){
+					var resp = JSON.parse(http.responseText);
+					checkError(resp);
+					resp = resp.map(function(itm){
+						itm.day = trimdate(itm.day);
+						itm.time = trimtime(itm.time);
+						return itm;
+					});
+					ractive.set("rfids", resp);
+					ractive.set("modla", "none");
+					console.log("RFIDs:", resp);
+				});
+			});
+		}
+	});
+	
+	var lock1 = false;
+	httpRequest("POST","/account","action=getuser",function(http){
+		if(http.responseText == "") document.location = "/account/logout";
+		else{
+			userdict = JSON.parse(http.responseText);
+			if(checkError(userdict)) document.location = "/account/logout";
+			if(!userdict.admin) document.location = "/account";
+			else{
+				ractive.set("user", userdict);
+				console.log(userdict);
+			}
+		}
+		lock1 = true;
+	});
+	
+	var lock2 = false;
+	httpRequest("GET","/api?action=getprojs","",function(http){
+		if(http.responseText != ""){
+			var pjs = JSON.parse(http.responseText);
+			checkError(pjs);
+			ractive.set("projs", pjs);
+			console.log("Projs:", pjs);
+		}
+		lock2 = true;
+	});
+	
+	var lock3 = false;
+	httpRequest("GET","/api?action=getscanners","",function(http){
+		var resp = JSON.parse(http.responseText);
+		checkError(resp);
+		ractive.set("scans", resp);
+		var sdict = {};
+		resp.forEach(function(itm){ sdict[itm.sid] = itm.name; });
+		ractive.set("scans2", sdict);
+		console.log("Scanners:", resp, sdict);
+		lock3 = true;
+	});
+	
+	var lock4 = false;
+	var lock5 = false;
+	httpRequest("GET","/api?action=getemployees","",function(http){
+		var resp = JSON.parse(http.responseText);
+		checkError(resp);
+		var emps = {};
+		resp.forEach(function(itm){
+			emps[itm.uid] = itm.lname + ", " + itm.fname;
+		});
+		ractive.set("employees", emps);
+		httpRequest("GET","/api?action=getrfidevents&fromday="+getdate()+"&today="+getdate(),"",function(http){
+			var resp = JSON.parse(http.responseText);
+			checkError(resp);
+			resp = resp.map(function(itm){
+				itm.day = trimdate(itm.day);
+				itm.time = trimtime(itm.time);
+				return itm;
+			});
+			ractive.set("rfids", resp);
+			console.log("RFIDs:", resp);
+			lock4 = true;
+		});
+		console.log("Employees:", emps);
+		lock5 = true;
+	});
+	
+	var lock6 = false;
+	httpRequest("GET","/api?action=geturegrfidevents","",function(http){
+		var resp = JSON.parse(http.responseText);
+		checkError(resp);
+		ractive.set("urfids", resp);
+		console.log("URFIDS:", resp);
+		lock6 = true;
+	});
+	
+	var lock7 = false;
+	httpRequest("GET","/api?action=getincidents","",function(http){
+		var resp = JSON.parse(http.responseText);
+		checkError(resp);
+		ractive.set("incids", resp);
+		console.log("Incidents:", resp);
+		lock7 = true;
+	});
+	
+	var modalIntv = setInterval(function(){
+		if(lock1 && lock2 && lock3 && lock4 && lock5 && lock6){
+			ractive.set("modla", "none");
+			clearInterval(modalIntv);
+		}
+	}, 250);
+</script>

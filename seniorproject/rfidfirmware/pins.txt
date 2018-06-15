@@ -1,0 +1,20 @@
+esp32	rc522	piezo	dipsw	buttn	led01	power
+3v3		3.3v			all**	all**
+gnd		gnd								-		out-
+vin												out+
+d15				outer
+d4				center
+d2										+
+d5		sda
+d18		sck
+d19		miso
+d22		rst
+d23		mosi
+d32						0*
+d33						1*
+d34						2*
+d35						3*
+d25								0*
+
+* also pulled down to ground
+** all pins not directly connected to mcu

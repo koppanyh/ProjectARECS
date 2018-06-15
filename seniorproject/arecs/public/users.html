@@ -169,7 +169,7 @@
 						var result = JSON.parse(http.responseText);
 						checkError(result);
 						console.log(result);
-						document.location = "/viewprofile.html?uid=" + result.insertId;
+						document.location = "/viewprofile.html?id=" + result.insertId;
 					});
 				}
 				return false;
