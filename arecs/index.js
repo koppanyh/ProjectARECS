@@ -1,4 +1,4 @@
-//v1.01
+//v1.02
 
 const express = require('express');
 const bodyParser = require('body-parser');
@@ -441,7 +441,7 @@ function apiFunc(req, res){
 		}
 		else if(dat.action == "editclocks"){
 			if(["day","tstart","tend"].indexOf(dat.tag) >= 0){
-				var query = "UPDATE daydb SET "+dat.tag+"=?, hours=TIME_TO_SEC(TIMEDIFF(tend,tstart))/3600 WHERE did=? AND uid=?";
+				var query = "UPDATE daydb SET "+dat.tag+"=?, hours=IFNULL(TIME_TO_SEC(TIMEDIFF(tend,tstart))/3600, 0) WHERE did=? AND uid=?";
 				var queryparms = [dat.value,dat.did];
 				if("uid" in dat){
 					if(req.session.user.admin) queryparms.push(dat.uid);
