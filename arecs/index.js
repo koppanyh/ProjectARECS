@@ -1,3 +1,5 @@
+//v1.01
+
 const express = require('express');
 const bodyParser = require('body-parser');
 const session = require('client-sessions');
@@ -35,7 +37,8 @@ fs.readFile("db.key", function(err, dat){
 			host: dbkey.hostsite,
 			database: dbkey.database,
 			user: dbkey.username,
-			password: dbkey.password
+			password: dbkey.password,
+			port: dbkey.port || 3306
 		});
 		console.log("MySQL pool started");
 	}
@@ -413,7 +416,7 @@ function apiFunc(req, res){
 				query +=  " AND day=?";
 				queryparms.push(dat.date);
 			} else if("week" in dat){
-				query += " AND WEEK(day)=WEEK(?)";
+				query += " AND YEARWEEK(day)=YEARWEEK(?)";
 				queryparms.push(dat.week);
 			} else{
 				if("fromday" in dat){
