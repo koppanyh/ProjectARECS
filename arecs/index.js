@@ -1,4 +1,4 @@
-//v1.02
+//v1.03
 
 const express = require('express');
 const bodyParser = require('body-parser');
@@ -112,7 +112,7 @@ task1 = cron.schedule('59 23 * * *', function(){
 				});
 				var query = "UPDATE daydb SET tend=?, hours=TIME_TO_SEC(TIMEDIFF(tend,tstart))/3600 WHERE did=?";
 				daydb.forEach(function(itm){
-					var usetime = "11:59";
+					var usetime = "23:59";
 					if(itm.uid in users){
 						if(users[itm.uid].split('.')[0] != itm.tstart) usetime = users[itm.uid];
 					}
