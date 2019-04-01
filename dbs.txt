@@ -52,3 +52,70 @@ daydb
 	tstart		time
 	tend		time
 	hours		float
+
+
+
+
+Table userdb {
+  uid int [primary key]
+  email varchar
+  salt varchar
+  hashpw varchar
+  fname varchar
+  lname varchar
+  admin boolean
+  wage float4
+  days varchar
+  picture varchar
+  rfid varchar
+}
+
+Table projdb {
+  pid int [primary key]
+  title varchar
+  description varchar
+  active varchar
+}
+
+Table workdb {
+  wid int [primary key]
+  uid int
+  did int
+  pid int
+  description varchar
+  tstart time
+  tend time
+}
+
+Table rfiddb {
+  rid int [primary key]
+  uid int
+  sid int
+  day date
+  time time
+}
+
+Table scannerdb {
+  sid int [primary key]
+  devid varchar
+  name varchar
+  location varchar
+}
+
+Table daydb {
+  did int [primary key]
+  uid int
+  day date
+  tstart time
+  tend time
+  hours float4
+}
+
+Ref: workdb.uid > userdb.uid
+Ref: workdb.did > daydb.did
+Ref: workdb.pid > projdb.pid
+
+Ref: rfiddb.uid > userdb.uid
+Ref: rfiddb.sid > scannerdb.sid
+
+Ref: daydb.uid > userdb.uid
