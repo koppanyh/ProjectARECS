@@ -1,0 +1,106 @@
+login:
+SELECT * from userdb WHERE email=?
+
+getuser:
+SELECT * FROM userdb WHERE uid=?
+
+updateestim:
+UPDATE userdb SET days=? WHERE uid=?
+SELECT days FROM userdb WHERE uid=?
+
+edituser:
+UPDATE userdb SET hashpw=?, salt=? WHERE uid=?
+UPDATE userdb SET picture=? WHERE uid=?
+UPDATE userdb SET "+dat.tag+"=? WHERE uid=?
+["email","fname","lname","admin","wage","picture","rfid","passwd"]
+
+newuser:
+INSERT INTO userdb (email,salt,hashpw,fname,lname) VALUES ('email@email.com','0000','00000000','First','Last')
+
+deleteuser:
+DELETE FROM userdb WHERE uid=?
+
+
+
+rfidevent:
+SELECT sid from scannerdb WHERE devid=?
+SELECT uid from userdb WHERE rfid=?
+INSERT INTO rfiddb (uid, sid, day, time) VALUES (?,?,?,?)
+SELECT did FROM daydb WHERE uid=? AND day=? AND tend IS NULL
+INSERT INTO daydb (uid, day, tstart) VALUES (?,?,?)
+
+
+
+getclocks:
+SELECT * FROM daydb WHERE uid=?
+	AND day=?
+	AND WEEK(day)==WEEK(?)
+	AND day>=?
+	AND day<=?
+	AND tend IS NULL
+
+addclocks:
+INSERT INTO daydb (uid, day, tstart) VALUES (?,?,?)
+
+editclocks:
+UPDATE daydb SET "+dat.tag+"=?, hours=TIME_TO_SEC(TIMEDIFF(tend,tstart))/3600 WHERE did=? AND uid=?
+["day","tstart","tend"]
+UPDATE daydb SET hours=? WHERE did=? AND uid=?
+
+getworks:
+SELECT * FROM workdb WHERE uid=?
+	AND did=?
+	AND did>=?
+	AND did<=?
+
+addworks:
+INSERT INTO workdb (uid, did, pid, description, tstart, tend) VALUES (?,?,?,?,?,?)
+
+editworks:
+UPDATE workdb SET "+dat.tag+"=? WHERE wid=? AND uid=?
+["tstart","tend","pid","description"]
+
+getprojs:
+SELECT pid,title,active FROM projdb
+	WHERE active=1
+SELECT * from projdb
+	WHERE active=1
+
+addprojs:
+INSERT INTO projdb (title, description, active) VALUES (?,?,?)
+
+editprojs:
+UPDATE projdb SET "+dat.tag+"=? WHERE pid=?
+["title","description","active"]
+
+gethours:
+SELECT uid,did,day,hours,tstart,tend FROM daydb
+	WHERE
+		<AND> day>=?
+		<AND> day<=?
+		<AND> uid=?
+SELECT did,day,hours,tstart,tend FROM daydb WHERE uid=?
+	AND day>=?
+	AND day<=?
+
+getemployees:
+SELECT uid,email,fname,lname,wage,days,picture FROM userdb
+
+getrfidevents:
+SELECT * FROM rfiddb WHERE 1
+	AND uid=?
+	AND day=?
+	AND day>=?
+	AND day<=?
+
+getscanners:
+SELECT sid,name FROM scannerdb
+SELECT * FROM scannerdb
+
+addscanners:
+INSERT INTO scannerdb (devid, name, location) VALUES (?,?,?)
+
+editscanners:
+UPDATE scannerdb SET "+dat.tag+"=? WHERE sid=?
+["devid","name","location"]
+
