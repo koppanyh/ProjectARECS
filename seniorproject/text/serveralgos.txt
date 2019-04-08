@@ -1,0 +1,62 @@
+using node backend with following libraries for extra features: express (web server), body-parser (url get decoder), client-sessions (session cookies), fs (filesystem access), mysql (db interface), crypto (random numbers for salts), cron (scheduled jobs), multer (taking file uploads to express)
+
+set up file upload to public/userpics/ for files less than 10MB ending with png/jpg/jpeg/gif
+
+read db.key file, make connection to database
+error if not
+
+set up function to detect server sigint, stop cron job, close db connection, exit
+
+set up session cookies with 7 days duration from last activity
+
+set up root url to either go to clock in page or login page
+
+set up helper functions for checking if user is logged in, run mysql queries and return results, start cron job to close open shifts at midnight, and log incidents
+
+setup user refresh cache
+
+setup /account post api
+	login
+	logout
+	getuser
+	newuser
+	edituser
+	deleteuser
+	updateestim
+	redirect to login or user page
+get /account
+	login.html or user.html
+get /account/logout*
+	logout and send to login.html
+get /account/login.html
+	send to user or serve login.html file
+get /account/user.html
+	server user.html file or send to login
+
+setup unknown rfids cache
+
+setup /api get/post api
+expose post data with get data
+	rfidevent
+	gettime
+	check if logged in
+		getclocks
+		addclocks
+		editclocks
+		getworks
+		addworks
+		editworks
+		getprojs
+		addprojs
+		editprojs
+		gethours
+		getemployees
+		getrfidevents
+		geturegrfidevents
+		getscanners
+		addscanners
+		editscanners
+		getincidents
+		send unknown api error
+
+start server on port 8080

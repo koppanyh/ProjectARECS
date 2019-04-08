@@ -1,3 +1,8 @@
+cron_job:
+SELECT did,uid,tstart FROM daydb WHERE day=? AND tend IS NULL
+SELECT uid,time FROM rfiddb WHERE day=?
+UPDATE daydb SET tend=?, hours=TIME_TO_SEC(TIMEDIFF(tend,tstart))/3600 WHERE did=?
+
 login:
 SELECT * from userdb WHERE email=?
 
